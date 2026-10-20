@@ -338,4 +338,36 @@ class PublicWebsiteTest extends TestCase
             ->assertSee('Emergency Line')
             ->assertSee('Quick Links');
     }
+
+    /**
+     * Regression test: Verify public layout contains progressive enhancement classes and fail-safe JS detection.
+     */
+    public function test_public_layout_includes_progressive_enhancement_and_failsafe_classes(): void
+    {
+        $response = $this->get(route('home'));
+        $response->assertStatus(200);
+
+        // Verify HTML element begins with no-js class for graceful degradation
+        $response->assertSee('class="no-js"', false);
+
+        // Verify inline script immediately activates .js class
+        $response->assertSee("document.documentElement.classList.remove('no-js')", false);
+        $response->assertSee("document.documentElement.classList.add('js')", false);
+    }
+
+    /**
+     * Regression test: Verify main.css ensures all [data-aos] content is visible by default.
+     */
+    public function test_public_website_main_css_contains_failsafe_aos_visibility_rules(): void
+    {
+        $cssPath = public_path('assets/css/main.css');
+        $this->assertFileExists($cssPath);
+
+        $cssContent = file_get_contents($cssPath);
+
+        // Ensures [data-aos] is forced visible by default
+        $this->assertStringContainsString('[data-aos]', $cssContent);
+        $this->assertStringContainsString('opacity: 1 !important;', $cssContent);
+        $this->assertStringContainsString('html.aos-initialized', $cssContent);
+    }
 }

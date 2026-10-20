@@ -85,24 +85,45 @@
     document.addEventListener('scroll', toggleScrollTop);
 
     /**
-     * Animation on scroll function and init
+     * Animation on scroll function and safe init
      */
+    let aosInitRan = false;
     function aosInit() {
-        if (typeof AOS !== 'undefined') {
-            AOS.init({
-                duration: 600,
-                easing: 'ease-in-out',
-                once: true,
-                mirror: false
-            });
+        if (aosInitRan) return;
+        if (typeof AOS !== 'undefined' && typeof AOS.init === 'function') {
+            try {
+                AOS.init({
+                    duration: 600,
+                    easing: 'ease-in-out',
+                    once: true,
+                    mirror: false
+                });
+                document.documentElement.classList.add('aos-initialized');
+                aosInitRan = true;
+            } catch (err) {
+                console.warn('AOS initialization error; content remains visible:', err);
+                document.documentElement.classList.remove('aos-initialized');
+            }
+        } else {
+            document.documentElement.classList.remove('aos-initialized');
         }
     }
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', aosInit);
     } else {
         aosInit();
     }
     window.addEventListener('load', aosInit);
+
+    // Safety fallback: ensure any element not animated within 1.5s is fully revealed
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            document.querySelectorAll('[data-aos]:not(.aos-animate)').forEach(function(el) {
+                el.classList.add('aos-animate');
+            });
+        }, 1500);
+    });
 
     /**
      * Init swiper sliders

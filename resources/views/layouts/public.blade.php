@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="no-js">
 
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <script>
+        document.documentElement.classList.remove('no-js');
+        document.documentElement.classList.add('js');
+    </script>
     <title>@yield('title', 'Accredited Medical Center & Healthcare Services') | {{ config('app.name', 'MediCare Hospital') }}</title>
     <meta name="description" content="@yield('meta_description', 'MediCare Hospital provides 24/7 emergency care, specialized clinical departments, world-class board-certified physicians, and compassionate patient-centered healthcare.')">
     <meta name="keywords" content="hospital, healthcare, medical clinic, cardiology, neurology, pediatrics, surgery, emergency care, appointments, doctors">
