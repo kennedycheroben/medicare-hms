@@ -59,3 +59,57 @@ Route::post('/contact', [ContactController::class, 'store'])->middleware('thrott
 
 // 12. Patient Portal Entry
 Route::get('/portal/login', [PageController::class, 'portalLogin'])->name('portal.login');
+
+/*
+|--------------------------------------------------------------------------
+| Staff Administration & RBAC Authentication Routes
+|--------------------------------------------------------------------------
+*/
+
+// Guest Staff Auth Routes
+Route::middleware('guest')->group(function () {
+    Route::get('/admin/login', [\App\Http\Controllers\Admin\AdminAuthController::class, 'showLoginForm'])->name('admin.login');
+    Route::post('/admin/login', [\App\Http\Controllers\Admin\AdminAuthController::class, 'login'])->name('admin.login.submit');
+});
+
+// Authenticated Staff Logout
+Route::post('/admin/logout', [\App\Http\Controllers\Admin\AdminAuthController::class, 'logout'])->middleware('auth')->name('admin.logout');
+
+// Protected Staff Admin Group
+Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
+    Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
+
+    // Role-restricted routes enforcing least-privilege RBAC matrix
+    Route::get('/staff', [\App\Http\Controllers\Admin\ModuleController::class, 'staff'])
+        ->middleware('role:super_admin')
+        ->name('admin.staff.index');
+
+    Route::get('/reports', [\App\Http\Controllers\Admin\ModuleController::class, 'reports'])
+        ->middleware('role:super_admin,hospital_director')
+        ->name('admin.reports.index');
+
+    Route::get('/clinical', [\App\Http\Controllers\Admin\ModuleController::class, 'clinical'])
+        ->middleware('role:super_admin,doctor')
+        ->name('admin.clinical.index');
+
+    Route::get('/triage', [\App\Http\Controllers\Admin\ModuleController::class, 'triage'])
+        ->middleware('role:super_admin,nurse,receptionist')
+        ->name('admin.triage.index');
+
+    Route::get('/pharmacy', [\App\Http\Controllers\Admin\ModuleController::class, 'pharmacy'])
+        ->middleware('role:super_admin,pharmacist')
+        ->name('admin.pharmacy.index');
+
+    Route::get('/laboratory', [\App\Http\Controllers\Admin\ModuleController::class, 'laboratory'])
+        ->middleware('role:super_admin,lab_technician')
+        ->name('admin.laboratory.index');
+
+    Route::get('/billing', [\App\Http\Controllers\Admin\ModuleController::class, 'billing'])
+        ->middleware('role:super_admin,cashier')
+        ->name('admin.billing.index');
+
+    Route::get('/audit-logs', [\App\Http\Controllers\Admin\ModuleController::class, 'auditLogs'])
+        ->middleware('role:super_admin')
+        ->name('admin.audit.index');
+});
+

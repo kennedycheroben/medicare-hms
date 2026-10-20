@@ -11,6 +11,14 @@ use Tests\TestCase;
 
 class PublicWebsiteTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (! Department::exists()) {
+            $this->seed(\Database\Seeders\HospitalDataSeeder::class);
+        }
+    }
     /**
      * Test that all 12 primary public pages return a successful 200 response.
      */
@@ -188,12 +196,14 @@ class PublicWebsiteTest extends TestCase
     {
         $uniqueRef = 'MC-' . date('Ymd') . '-' . strtoupper(Str::random(5));
 
+        $department = Department::first();
+
         $appointment = Appointment::create([
             'reference_code' => $uniqueRef,
             'patient_name' => 'Confidential Patient Target',
             'patient_email' => 'private.patient@confidential-health.test',
             'patient_phone' => '+15550009999',
-            'department_id' => 1,
+            'department_id' => $department?->id,
             'appointment_date' => now()->addDays(3)->format('Y-m-d'),
             'appointment_time' => '02:00 PM - 03:00 PM',
             'status' => 'pending',
