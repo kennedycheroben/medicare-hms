@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Department;
+use App\Models\Doctor;
+use Illuminate\Http\Request;
+
+class PageController extends Controller
+{
+    public function home()
+    {
+        if (view()->exists('pages.home')) {
+            $departments = Department::where('is_active', true)->orderBy('sort_order')->take(6)->get();
+            $doctors = Doctor::with('department')->where('is_available', true)->take(6)->get();
+            return view('pages.home', compact('departments', 'doctors'));
+        }
+
+        return view('welcome');
+    }
+
+    public function about()
+    {
+        $departmentCount = Department::where('is_active', true)->count();
+        $doctorCount = Doctor::where('is_available', true)->count();
+        return view('pages.about', compact('departmentCount', 'doctorCount'));
+    }
+
+    public function departments()
+    {
+        $departments = Department::withCount('doctors')->where('is_active', true)->orderBy('sort_order')->get();
+        return view('pages.departments', compact('departments'));
+    }
+
+    public function departmentDetail(string $slug)
+    {
+        $department = Department::with(['doctors' => function ($q) {
+            $q->where('is_available', true);
+        }])->where('slug', $slug)->where('is_active', true)->firstOrFail();
+
+        $otherDepartments = Department::where('id', '!=', $department->id)->where('is_active', true)->take(4)->get();
+
+        return view('pages.department-detail', compact('department', 'otherDepartments'));
+    }
+
+    public function doctors(Request $request)
+    {
+        $departments = Department::where('is_active', true)->orderBy('name')->get();
+
+        $query = Doctor::with('department')->where('is_available', true);
+
+        if ($request->filled('department')) {
+            $query->whereHas('department', function ($q) use ($request) {
+                $q->where('slug', $request->department);
+            });
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('specialty', 'like', "%{$search}%")
+                  ->orWhere('bio', 'like', "%{$search}%");
+            });
+        }
+
+        $doctors = $query->orderBy('name')->paginate(9)->withQueryString();
+
+        return view('pages.doctors', compact('doctors', 'departments'));
+    }
+
+    public function doctorProfile(int $id)
+    {
+        $doctor = Doctor::with('department')->findOrFail($id);
+        $relatedDoctors = Doctor::where('department_id', $doctor->department_id)
+            ->where('id', '!=', $doctor->id)
+            ->take(3)
+            ->get();
+
+        return view('pages.doctor-profile', compact('doctor', 'relatedDoctors'));
+    }
+
+    public function patientInfo()
+    {
+        return view('pages.patient-info');
+    }
+
+    public function services()
+    {
+        $departments = Department::where('is_active', true)->get();
+        return view('pages.services', compact('departments'));
+    }
+
+    public function news()
+    {
+        return view('pages.news');
+    }
+
+    public function portalLogin()
+    {
+        return view('pages.portal-login');
+    }
+}
