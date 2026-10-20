@@ -55,6 +55,7 @@ enum UserRole: string
                 'hospital.view_doctors',
                 'appointments.view_all',
                 'census.view_overview',
+                'patients.view_summary',
             ],
             self::DOCTOR => [
                 'clinical.consultations',
@@ -62,9 +63,14 @@ enum UserRole: string
                 'clinical.prescriptions',
                 'clinical.lab_requests',
                 'appointments.view_assigned',
+                'patients.view',
+                'triage.view',
             ],
             self::NURSE => [
                 'triage.vital_signs',
+                'triage.assess',
+                'triage.queue',
+                'patients.view',
                 'inpatient.observations',
                 'inpatient.bed_allocation',
                 'inpatient.emar',
@@ -87,6 +93,8 @@ enum UserRole: string
             ],
             self::RECEPTIONIST => [
                 'patients.register',
+                'patients.view',
+                'visits.intake',
                 'appointments.create',
                 'appointments.triage',
                 'inquiries.process',

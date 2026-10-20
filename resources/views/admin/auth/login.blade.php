@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -76,6 +77,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <main class="auth-card">
@@ -93,22 +95,22 @@
 
         <div class="auth-body">
             @if (session('status'))
-                <div class="alert alert-success alert-dismissible fade show small" role="alert">
-                    <i class="bi bi-check-circle-fill me-1"></i> {{ session('status') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+            <div class="alert alert-success alert-dismissible fade show small" role="alert">
+                <i class="bi bi-check-circle-fill me-1"></i> {{ session('status') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
             @endif
 
             @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show small" role="alert">
-                    <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Authentication failed:</div>
-                    <ul class="mb-0 ps-3">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+            <div class="alert alert-danger alert-dismissible fade show small" role="alert">
+                <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Authentication failed:</div>
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
             @endif
 
             <form action="{{ route('admin.login.submit') }}" method="POST" autocomplete="on">
@@ -134,7 +136,7 @@
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
                         <label class="form-check-label small text-muted" for="remember">
-                            Remember on this terminal
+                            Remember on this browser
                         </label>
                     </div>
                 </div>

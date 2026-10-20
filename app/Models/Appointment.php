@@ -11,6 +11,7 @@ class Appointment extends Model
     use HasFactory;
 
     protected $fillable = [
+        'patient_id',
         'reference_code',
         'patient_name',
         'patient_email',
@@ -29,6 +30,16 @@ class Appointment extends Model
     protected $casts = [
         'appointment_date' => 'date',
     ];
+
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Patient::class);
+    }
+
+    public function visit(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Visit::class);
+    }
 
     public function department(): BelongsTo
     {

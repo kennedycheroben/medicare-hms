@@ -220,10 +220,29 @@
                 $isDirector = $user && $user->hasRole(['super_admin', 'hospital_director']);
                 $isDoctor = $user && $user->hasRole(['super_admin', 'doctor']);
                 $isTriage = $user && $user->hasRole(['super_admin', 'nurse', 'receptionist']);
+                $isIntake = $user && $user->hasRole(['super_admin', 'receptionist', 'nurse']);
+                $isPatientViewer = $user && $user->hasRole(['super_admin', 'hospital_director', 'doctor', 'nurse', 'receptionist']);
                 $isPharmacy = $user && $user->hasRole(['super_admin', 'pharmacist']);
                 $isLab = $user && $user->hasRole(['super_admin', 'lab_technician']);
                 $isBilling = $user && $user->hasRole(['super_admin', 'cashier']);
             @endphp
+
+            <div class="nav-section-title">Patients & Front Desk</div>
+            <nav class="nav flex-column">
+                @if($isIntake)
+                    <a href="{{ route('admin.intake.index') }}" class="nav-link {{ request()->routeIs('admin.intake.*') ? 'active' : '' }}">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        <span>Front-Desk Intake</span>
+                    </a>
+                @endif
+
+                @if($isPatientViewer)
+                    <a href="{{ route('admin.patients.index') }}" class="nav-link {{ request()->routeIs('admin.patients.*') ? 'active' : '' }}">
+                        <i class="bi bi-person-vcard"></i>
+                        <span>Patient Directory (PMI)</span>
+                    </a>
+                @endif
+            </nav>
 
             <div class="nav-section-title">Clinical & Care</div>
             <nav class="nav flex-column">

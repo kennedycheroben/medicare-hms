@@ -79,11 +79,53 @@ Route::post('/admin/logout', [\App\Http\Controllers\Admin\AdminAuthController::c
 Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
 
-    // Role-restricted routes enforcing least-privilege RBAC matrix
-    Route::get('/staff', [\App\Http\Controllers\Admin\ModuleController::class, 'staff'])
-        ->middleware('role:super_admin')
-        ->name('admin.staff.index');
+    // 1. Staff Management (SuperAdmin only)
+    Route::middleware('role:super_admin')->group(function () {
+        Route::get('/staff', [\App\Http\Controllers\Admin\StaffManagementController::class, 'index'])->name('admin.staff.index');
+        Route::get('/staff/create', [\App\Http\Controllers\Admin\StaffManagementController::class, 'create'])->name('admin.staff.create');
+        Route::post('/staff', [\App\Http\Controllers\Admin\StaffManagementController::class, 'store'])->name('admin.staff.store');
+        Route::get('/staff/{staff}/edit', [\App\Http\Controllers\Admin\StaffManagementController::class, 'edit'])->name('admin.staff.edit');
+        Route::put('/staff/{staff}', [\App\Http\Controllers\Admin\StaffManagementController::class, 'update'])->name('admin.staff.update');
+        Route::post('/staff/{staff}/toggle-status', [\App\Http\Controllers\Admin\StaffManagementController::class, 'toggleStatus'])->name('admin.staff.toggle-status');
+    });
 
+    // 2. Patient Master Index (PMI)
+    Route::get('/patients', [\App\Http\Controllers\Admin\PatientController::class, 'index'])
+        ->middleware('role:super_admin,hospital_director,doctor,nurse,receptionist')
+        ->name('admin.patients.index');
+
+    Route::middleware('role:super_admin,receptionist')->group(function () {
+        Route::get('/patients/create', [\App\Http\Controllers\Admin\PatientController::class, 'create'])->name('admin.patients.create');
+        Route::post('/patients', [\App\Http\Controllers\Admin\PatientController::class, 'store'])->name('admin.patients.store');
+        Route::get('/patients/{patient}/edit', [\App\Http\Controllers\Admin\PatientController::class, 'edit'])->name('admin.patients.edit');
+        Route::put('/patients/{patient}', [\App\Http\Controllers\Admin\PatientController::class, 'update'])->name('admin.patients.update');
+    });
+
+    Route::get('/patients/{patient}', [\App\Http\Controllers\Admin\PatientController::class, 'show'])
+        ->middleware('role:super_admin,hospital_director,doctor,nurse,receptionist')
+        ->name('admin.patients.show');
+
+    // 3. Front-Desk Intake & Visits
+    Route::get('/intake', [\App\Http\Controllers\Admin\IntakeController::class, 'index'])
+        ->middleware('role:super_admin,receptionist,nurse')
+        ->name('admin.intake.index');
+
+    Route::middleware('role:super_admin,receptionist')->group(function () {
+        Route::post('/intake/walk-in', [\App\Http\Controllers\Admin\IntakeController::class, 'walkIn'])->name('admin.intake.walk-in');
+        Route::post('/intake/check-in', [\App\Http\Controllers\Admin\IntakeController::class, 'checkInAppointment'])->name('admin.intake.check-in');
+    });
+
+    // 4. Nursing Triage Station & Vital Signs
+    Route::get('/triage', [\App\Http\Controllers\Admin\TriageController::class, 'index'])
+        ->middleware('role:super_admin,nurse,receptionist')
+        ->name('admin.triage.index');
+
+    Route::middleware('role:super_admin,nurse')->group(function () {
+        Route::get('/triage/{visit}/assess', [\App\Http\Controllers\Admin\TriageController::class, 'assess'])->name('admin.triage.assess');
+        Route::post('/triage/{visit}/assess', [\App\Http\Controllers\Admin\TriageController::class, 'store'])->name('admin.triage.store');
+    });
+
+    // 5. Functional Module Shells for other roles
     Route::get('/reports', [\App\Http\Controllers\Admin\ModuleController::class, 'reports'])
         ->middleware('role:super_admin,hospital_director')
         ->name('admin.reports.index');
@@ -91,10 +133,6 @@ Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
     Route::get('/clinical', [\App\Http\Controllers\Admin\ModuleController::class, 'clinical'])
         ->middleware('role:super_admin,doctor')
         ->name('admin.clinical.index');
-
-    Route::get('/triage', [\App\Http\Controllers\Admin\ModuleController::class, 'triage'])
-        ->middleware('role:super_admin,nurse,receptionist')
-        ->name('admin.triage.index');
 
     Route::get('/pharmacy', [\App\Http\Controllers\Admin\ModuleController::class, 'pharmacy'])
         ->middleware('role:super_admin,pharmacist')

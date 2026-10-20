@@ -121,5 +121,29 @@ class User extends Authenticatable
     {
         return $this->hasMany(AuditLog::class);
     }
+
+    /**
+     * Patients registered by this user.
+     */
+    public function registeredPatients(): HasMany
+    {
+        return $this->hasMany(Patient::class, 'registered_by');
+    }
+
+    /**
+     * Patient encounters / visits checked in by this receptionist / user.
+     */
+    public function conductedVisits(): HasMany
+    {
+        return $this->hasMany(Visit::class, 'checked_in_by');
+    }
+
+    /**
+     * Triage records completed by this nurse.
+     */
+    public function triageAssessments(): HasMany
+    {
+        return $this->hasMany(TriageRecord::class, 'triage_nurse_id');
+    }
 }
 

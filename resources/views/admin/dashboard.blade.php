@@ -112,6 +112,38 @@
                             $user = $currentUser;
                         @endphp
 
+                        @if($user->hasRole(['super_admin', 'receptionist', 'nurse']))
+                            <div class="col-md-6">
+                                <a href="{{ route('admin.intake.index') }}" class="card text-decoration-none border p-3 h-100 hover-shadow rounded-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="p-3 rounded bg-primary bg-opacity-10 text-primary">
+                                            <i class="bi bi-box-arrow-in-right fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">Front-Desk Intake</div>
+                                            <div class="small text-muted">Check-in appointments & walk-in visits</div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        @endif
+
+                        @if($user->hasRole(['super_admin', 'hospital_director', 'doctor', 'nurse', 'receptionist']))
+                            <div class="col-md-6">
+                                <a href="{{ route('admin.patients.index') }}" class="card text-decoration-none border p-3 h-100 hover-shadow rounded-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="p-3 rounded bg-indigo bg-opacity-10 text-indigo" style="background-color: #ede9fe; color: #6366f1;">
+                                            <i class="bi bi-person-vcard fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">Patient Registry (PMI)</div>
+                                            <div class="small text-muted">Patient master index, MRNs & profiles</div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        @endif
+
                         @if($user->hasRole(['super_admin', 'nurse', 'receptionist']))
                             <div class="col-md-6">
                                 <a href="{{ route('admin.triage.index') }}" class="card text-decoration-none border p-3 h-100 hover-shadow rounded-3">

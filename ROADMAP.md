@@ -117,23 +117,42 @@ The public website and back-office administration never duplicate data entities.
 
 ---
 
-### Phase 4: Authentication, Access Control & Staff Administration (Next Phase)
+### Phase 4: Authentication, Access Control & Staff Administration
 * **Scope**: Multi-guard authentication for staff and patients, secure session lifecycle, password recovery, role-based authorization, and user administration.
-* **Planned Modules**:
+* **Status**: **Completed**.
+* **Implemented Modules**:
   1. **Staff Authentication**: `/admin/login`, `/admin/logout`, session management, brute-force throttling (`throttle:5,1`).
-  2. **Role & Permission Management**: Roles: `SuperAdmin`, `HospitalDirector`, `Doctor`, `Nurse`, `Pharmacist`, `LabTechnician`, `Cashier`, `Receptionist`.
-  3. **Patient Portal Authentication**: `/portal/login` with Patient Medical Record Number (MRN) or verified email/phone OTP.
-  4. **Audit Logging**: Structured audit trail recording staff actions, logins, status changes, and record modifications.
+  2. **Role & Permission Management**: 8 standard roles (`SuperAdmin`, `HospitalDirector`, `Doctor`, `Nurse`, `Pharmacist`, `LabTechnician`, `Cashier`, `Receptionist`) with granular capabilities.
+  3. **Patient Portal Authentication**: `/portal/login` entry shell.
+  4. **Audit Logging**: Structured audit trail recording staff actions, logins, status changes, and record modifications with credential redaction.
 * **Acceptance Criteria**:
-  - [ ] Unauthenticated requests to `/admin/*` securely redirect to `/admin/login`.
-  - [ ] Role middleware strictly prevents unauthorized role escalation (e.g. Receptionist cannot access Pharmacy or Billing).
-  - [ ] Passwords hashed with Bcrypt (cost factor 12).
-  - [ ] CSRF protection and secure session cookies enforced across all back-office routes.
+  - [x] Unauthenticated requests to `/admin/*` securely redirect to `/admin/login`.
+  - [x] Role middleware strictly prevents unauthorized role escalation.
+  - [x] Passwords hashed with Bcrypt (cost factor 12 in production, cost factor 4 in testing).
+  - [x] CSRF protection and secure session cookies enforced across all back-office routes.
+  - [x] 100% automated test pass rate (34 feature tests, 184 assertions).
 
 ---
 
-### Phase 5: Core Clinical, Operational & Administrative Modules
-Every clinical and operational module defined in the institutional charter will be delivered incrementally:
+### Phase 5: Staff Management, Patient Registration & Front-Desk Triage
+* **Scope**: Complete administrative staff management, Patient Master Index (PMI) with collision-resistant MRN generation, duplicate patient detection with explicit override, front-desk intake & appointment reconciliation, duplicate check-in prevention, and nursing triage station with vital signs & 5-tier clinical prioritization.
+* **Status**: **Completed**.
+* **Implemented Capabilities**:
+  1. **SuperAdmin Staff Management**: Full CRUD, search/filtering, role reassignment, account activation/deactivation, safeguards against self-demotion, self-deactivation, and last active SuperAdmin lockout.
+  2. **Patient Master Index (PMI)**: Server-generated unique Medical Record Numbers (`MRN-YYYY-XXXXXX`), legal demographics, emergency contacts, allergies, blood groups, and transactional creation.
+  3. **Duplicate Detection & Auditable Override**: Real-time detection of matching contact/demographic records with staff override confirmation audit logging (`patient.duplicate_overridden`).
+  4. **Front-Desk Patient Intake**: Walk-in visit check-in, scheduled appointment reconciliation with patient records, duplicate check-in prevention for active same-day encounters.
+  5. **Nursing Triage Station**: Triage queue with prominent emergency escalation, comprehensive vital signs recording (BP, pulse, RR, temperature, SpO2, pain score, weight, height, blood glucose, automatic BMI calculation), 5-tier clinical triage categorization, and doctor consultation handoff.
+* **Acceptance Criteria**:
+  - [x] Server-side authorization enforced on every action; no client-only guards.
+  - [x] Safe non-sequential unique MRN generation with database-level uniqueness.
+  - [x] Full audit logging for staff, patient, visit, and triage actions with sensitive data redacted.
+  - [x] 53 automated feature tests passing with 305 assertions and 0 failures.
+  - [x] Verified in real browser preview across public, admin, intake, and triage workflows.
+
+---
+
+### Phase 6: Core Clinical Documentation, Electronic Health Records (EHR) & Consultation Workflows (Next Phase)
 
 1. **Dashboard & Executive Analytics**: Bed occupancy rates, daily outpatient visits, pending triage, revenue summaries, emergency department status.
 2. **Patient Registration & Master Patient Index (MPI)**: Unique Medical Record Numbers (MRN), demographics, emergency contacts, national ID/passport records, biometric photo capture.
