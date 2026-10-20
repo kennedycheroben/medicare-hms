@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Services\AuditService;
 use Closure;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class EnsureUserHasRole
             return redirect()->guest(route('admin.login'));
         }
 
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->isActive()) {

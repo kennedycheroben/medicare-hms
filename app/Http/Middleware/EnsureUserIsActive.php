@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Services\AuditService;
 use Closure;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class EnsureUserIsActive
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::check()) {
+            /** @var User $user */
             $user = Auth::user();
 
             if (! $user->isActive()) {
