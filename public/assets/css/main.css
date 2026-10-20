@@ -8713,3 +8713,12 @@ section,
     padding-bottom: 60px;
     /* Add your styles here */
 }
+
+/* Accessibility & Progressive Enhancement: Ensure AOS content is never permanently hidden */
+@media (prefers-reduced-motion: reduce) {
+    [data-aos] {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+}

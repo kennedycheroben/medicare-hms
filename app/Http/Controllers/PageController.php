@@ -10,13 +10,9 @@ class PageController extends Controller
 {
     public function home()
     {
-        if (view()->exists('pages.home')) {
-            $departments = Department::where('is_active', true)->orderBy('sort_order')->take(6)->get();
-            $doctors = Doctor::with('department')->where('is_available', true)->take(6)->get();
-            return view('pages.home', compact('departments', 'doctors'));
-        }
-
-        return view('welcome');
+        $departments = Department::where('is_active', true)->orderBy('sort_order')->take(6)->get();
+        $doctors = Doctor::with('department')->where('is_available', true)->take(6)->get();
+        return view('pages.home', compact('departments', 'doctors'));
     }
 
     public function about()

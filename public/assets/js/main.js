@@ -97,6 +97,11 @@
             });
         }
     }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', aosInit);
+    } else {
+        aosInit();
+    }
     window.addEventListener('load', aosInit);
 
     /**
@@ -304,12 +309,6 @@
     });
 
     // Native backend submission handled by Laravel AppointmentController
-                    appointmentForm.reset();
-                }, 1000);
-            }
-        });
-    }
-
     // Native backend submission handled by Laravel ContactController
 
 })();

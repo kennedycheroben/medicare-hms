@@ -41,7 +41,7 @@ Route::get('/doctors/{id}', [PageController::class, 'doctorProfile'])->name('doc
 
 // 7. Appointment Booking & Submission
 Route::get('/appointments/book', [AppointmentController::class, 'create'])->name('appointments.create');
-Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
+Route::post('/appointments', [AppointmentController::class, 'store'])->middleware('throttle:10,1')->name('appointments.store');
 Route::get('/appointments/confirmation/{reference}', [AppointmentController::class, 'confirmation'])->name('appointments.confirmation');
 
 // 8. Patient Information & Visiting Guides
@@ -55,7 +55,7 @@ Route::get('/news', [PageController::class, 'news'])->name('news');
 
 // 11. Contact & Enquiries
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
-Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
+Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:10,1')->name('contact.store');
 
 // 12. Patient Portal Entry
 Route::get('/portal/login', [PageController::class, 'portalLogin'])->name('portal.login');

@@ -31,7 +31,6 @@ class AppointmentController extends Controller
             'doctor_id' => ['nullable', 'exists:doctors,id'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today'],
             'appointment_time' => ['required', 'string'],
-            'symptoms' => ['nullable', 'string', 'max:1000'],
         ], [
             'patient_name.required' => 'Please provide the patient’s full legal name.',
             'patient_email.required' => 'A valid email address is required for appointment confirmation.',
@@ -55,7 +54,7 @@ class AppointmentController extends Controller
             'doctor_id' => $validated['doctor_id'] ?? null,
             'appointment_date' => $validated['appointment_date'],
             'appointment_time' => $validated['appointment_time'],
-            'symptoms' => $validated['symptoms'] ?? null,
+            'symptoms' => null, // Omitted from public scheduling form for clinical privacy
             'status' => 'pending',
             'ip_address' => $request->ip(),
             'user_agent' => substr((string)$request->userAgent(), 0, 500),
@@ -67,10 +66,21 @@ class AppointmentController extends Controller
 
     public function confirmation(string $reference)
     {
-        $appointment = Appointment::with(['department', 'doctor'])
-            ->where('reference_code', $reference)
-            ->firstOrFail();
+        // Enforce strict reference code format validation (MC-YYYYMMDD-XXXXX)
+        if (!preg_match('/^MC-\d{8}-[A-Z0-9]{4,6}$/', $reference)) {
+            abort(404, 'Invalid appointment reference format.');
+        }
 
-        return view('pages.appointment-confirmation', compact('appointment'));
+        // Validate existence in database without exposing model attributes
+        $appointmentExists = Appointment::where('reference_code', $reference)->exists();
+
+        if (!$appointmentExists) {
+            abort(404, 'Appointment request not found.');
+        }
+
+        // Return only the verified reference code to prevent PII exposure
+        return view('pages.appointment-confirmation', [
+            'referenceCode' => $reference,
+        ]);
     }
 }
