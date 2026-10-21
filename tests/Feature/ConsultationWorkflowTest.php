@@ -294,6 +294,78 @@ class ConsultationWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_doctor_can_sign_consultation_via_put_method_or_spoofing(): void
+    {
+        $consultation = Consultation::create([
+            'visit_id' => $this->visit->id,
+            'patient_id' => $this->patient->id,
+            'doctor_id' => $this->doctorProfile1->id,
+            'clinician_id' => $this->doctorUser1->id,
+            'status' => 'draft',
+        ]);
+
+        $payload = [
+            'chief_complaint' => 'Severe odynophagia and fever',
+            'history_present_illness' => '3-day duration of progressive throat pain and difficulty swallowing solids.',
+            'examination_findings' => 'Tonsillar erythema and exudates. Temperature 38.3C.',
+            'assessment' => 'Confirmed bacterial tonsillitis.',
+            'diagnosis_type' => 'confirmed',
+            'primary_diagnosis' => 'Acute Tonsillitis, Bacterial',
+            'icd11_code' => 'CA03',
+            'treatment_plan' => 'Course of Amoxicillin 500mg TDS for 5 days. Paracetamol 1g PRN.',
+            'follow_up_instructions' => 'Return if high fever persists after 48h.',
+        ];
+
+        // Verify PUT request does NOT return 405 Method Not Allowed
+        $response = $this->actingAs($this->doctorUser1)
+            ->put(route('admin.consultations.sign', $consultation->id), $payload);
+
+        $response->assertRedirect(route('admin.consultations.show', $consultation->id));
+        $response->assertSessionHas('status');
+
+        $consultation->refresh();
+        $this->assertEquals('signed', $consultation->status);
+        $this->assertTrue($consultation->isSigned());
+
+        // Attempting to sign an already signed consultation must be rejected
+        $this->actingAs($this->doctorUser1)
+            ->post(route('admin.consultations.sign', $consultation->id), $payload)
+            ->assertForbidden();
+    }
+
+    public function test_unauthorized_user_cannot_sign_consultation(): void
+    {
+        $consultation = Consultation::create([
+            'visit_id' => $this->visit->id,
+            'patient_id' => $this->patient->id,
+            'doctor_id' => $this->doctorProfile1->id,
+            'clinician_id' => $this->doctorUser1->id,
+            'status' => 'draft',
+        ]);
+
+        $payload = [
+            'chief_complaint' => 'Severe odynophagia and fever',
+            'history_present_illness' => '3-day duration of progressive throat pain.',
+            'examination_findings' => 'Tonsillar erythema.',
+            'assessment' => 'Tonsillitis.',
+            'diagnosis_type' => 'confirmed',
+            'primary_diagnosis' => 'Tonsillitis',
+            'treatment_plan' => 'Antibiotics',
+        ];
+
+        // Another doctor cannot sign Dr. Jane Smith's consultation
+        $this->actingAs($this->doctorUser2)
+            ->post(route('admin.consultations.sign', $consultation->id), $payload)
+            ->assertForbidden();
+
+        // Non-doctor (nurse) cannot sign
+        $this->actingAs($this->nurse)
+            ->post(route('admin.consultations.sign', $consultation->id), $payload)
+            ->assertForbidden();
+
+        $this->assertEquals('draft', $consultation->fresh()->status);
+    }
+
     public function test_doctor_can_append_post_signature_clinical_addendum(): void
     {
         $consultation = Consultation::create([

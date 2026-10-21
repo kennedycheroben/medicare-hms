@@ -244,7 +244,7 @@
                     <div class="card-body p-4">
                         <form id="consultationForm" method="POST" action="{{ route('admin.consultations.update', $consultation->id) }}">
                             @csrf
-                            @method('PUT')
+                            <input type="hidden" name="_method" id="consultationFormMethod" value="PUT">
 
                             <div class="mb-3">
                                 <label for="chief_complaint" class="form-label fw-bold text-dark">
@@ -368,7 +368,7 @@
                             </div>
                             <div class="modal-footer border-top">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="button" class="btn btn-success" onclick="document.getElementById('consultationForm').action='{{ route('admin.consultations.sign', $consultation->id) }}'; document.getElementById('consultationForm').submit();">
+                                <button type="button" class="btn btn-success" id="confirmSignButton" onclick="const f = document.getElementById('consultationForm'); const m = document.getElementById('consultationFormMethod'); if (m) { m.remove(); } f.action='{{ route('admin.consultations.sign', $consultation->id) }}'; f.submit();">
                                     Confirm & Sign Off
                                 </button>
                             </div>
