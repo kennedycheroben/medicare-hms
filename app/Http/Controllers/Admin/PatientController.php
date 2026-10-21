@@ -173,9 +173,16 @@ class PatientController extends Controller
             'visits.department',
             'visits.doctor',
             'visits.triageRecord.nurse',
+            'visits.consultation.clinician',
             'appointments.department',
             'appointments.doctor',
             'registeredBy',
+            'consultations.clinician',
+            'consultations.doctor',
+            'consultations.addenda.author',
+            'prescriptions.prescriber',
+            'prescriptions.items.medicine',
+            'prescriptions.dispensings.batch',
         ]);
 
         return view('admin.patients.show', [

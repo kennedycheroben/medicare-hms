@@ -130,13 +130,55 @@ Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
         ->middleware('role:super_admin,hospital_director')
         ->name('admin.reports.index');
 
+    // Clinical Overview Shell (Accessible by SuperAdmin & Doctor)
     Route::get('/clinical', [\App\Http\Controllers\Admin\ModuleController::class, 'clinical'])
         ->middleware('role:super_admin,doctor')
         ->name('admin.clinical.index');
 
-    Route::get('/pharmacy', [\App\Http\Controllers\Admin\ModuleController::class, 'pharmacy'])
+    // 5. Doctor Clinical Consultations & EHR Workspace (Doctor only)
+    Route::middleware('role:doctor')->group(function () {
+        Route::get('/consultations', [\App\Http\Controllers\Admin\ConsultationController::class, 'index'])->name('admin.consultations.index');
+        Route::post('/consultations/start/{visit}', [\App\Http\Controllers\Admin\ConsultationController::class, 'start'])->name('admin.consultations.start');
+        Route::get('/consultations/{consultation}', [\App\Http\Controllers\Admin\ConsultationController::class, 'show'])->name('admin.consultations.show');
+        Route::put('/consultations/{consultation}', [\App\Http\Controllers\Admin\ConsultationController::class, 'update'])->name('admin.consultations.update');
+        Route::post('/consultations/{consultation}/sign', [\App\Http\Controllers\Admin\ConsultationController::class, 'sign'])->name('admin.consultations.sign');
+        Route::post('/consultations/{consultation}/addenda', [\App\Http\Controllers\Admin\ConsultationController::class, 'addendum'])->name('admin.consultations.addenda.store');
+        Route::post('/consultations/{consultation}/prescriptions', [\App\Http\Controllers\Admin\PrescriptionController::class, 'store'])->name('admin.prescriptions.store');
+        Route::post('/prescriptions/{prescription}/finalize', [\App\Http\Controllers\Admin\PrescriptionController::class, 'finalize'])->name('admin.prescriptions.finalize');
+    });
+
+    // Prescriptions Viewing & Cancellation
+    Route::get('/prescriptions/{prescription}', [\App\Http\Controllers\Admin\PrescriptionController::class, 'show'])
+        ->middleware('role:doctor,pharmacist,super_admin')
+        ->name('admin.prescriptions.show');
+    Route::post('/prescriptions/{prescription}/cancel', [\App\Http\Controllers\Admin\PrescriptionController::class, 'cancel'])
+        ->middleware('role:doctor,pharmacist,super_admin')
+        ->name('admin.prescriptions.cancel');
+
+    // 6. Pharmacy Dispensary Queue (SuperAdmin & Pharmacist view queue; Dispensing pharmacist-only)
+    Route::get('/pharmacy', [\App\Http\Controllers\Admin\PharmacyController::class, 'index'])
         ->middleware('role:super_admin,pharmacist')
         ->name('admin.pharmacy.index');
+
+    Route::middleware('role:pharmacist')->group(function () {
+        Route::get('/pharmacy/prescriptions/{prescription}', [\App\Http\Controllers\Admin\PharmacyController::class, 'show'])->name('admin.pharmacy.prescriptions.show');
+        Route::post('/pharmacy/items/{item}/dispense', [\App\Http\Controllers\Admin\PharmacyController::class, 'dispense'])->name('admin.pharmacy.dispense');
+        Route::post('/pharmacy/items/{item}/decline', [\App\Http\Controllers\Admin\PharmacyController::class, 'decline'])->name('admin.pharmacy.decline');
+        Route::get('/pharmacy/history', [\App\Http\Controllers\Admin\PharmacyController::class, 'history'])->name('admin.pharmacy.history');
+    });
+
+    // 7. Medicine Inventory & Stock Movements
+    Route::middleware('role:super_admin,hospital_director,pharmacist')->group(function () {
+        Route::get('/inventory', [\App\Http\Controllers\Admin\InventoryController::class, 'index'])->name('admin.inventory.index');
+        Route::get('/inventory/medicines/{medicine}', [\App\Http\Controllers\Admin\InventoryController::class, 'show'])->name('admin.inventory.medicines.show');
+        Route::get('/inventory/movements', [\App\Http\Controllers\Admin\InventoryController::class, 'movements'])->name('admin.inventory.movements');
+    });
+
+    Route::middleware('role:pharmacist')->group(function () {
+        Route::post('/inventory/medicines', [\App\Http\Controllers\Admin\InventoryController::class, 'storeMedicine'])->name('admin.inventory.medicines.store');
+        Route::post('/inventory/medicines/{medicine}/batches', [\App\Http\Controllers\Admin\InventoryController::class, 'storeBatch'])->name('admin.inventory.batches.store');
+        Route::post('/inventory/batches/{batch}/adjust', [\App\Http\Controllers\Admin\InventoryController::class, 'adjustStock'])->name('admin.inventory.batches.adjust');
+    });
 
     Route::get('/laboratory', [\App\Http\Controllers\Admin\ModuleController::class, 'laboratory'])
         ->middleware('role:super_admin,lab_technician')

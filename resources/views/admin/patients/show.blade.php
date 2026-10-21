@@ -229,6 +229,128 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Clinical Consultations & EHR History -->
+            @if(Auth::user()->hasRole(['doctor', 'hospital_director', 'super_admin']))
+                <div class="card border-0 shadow-sm rounded-4 mt-4">
+                    <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+                        <h2 class="h6 fw-bold text-dark mb-0">
+                            <i class="bi bi-file-earmark-medical text-primary me-2"></i> Clinical Consultations & EHR Records
+                        </h2>
+                        <span class="badge bg-light text-secondary border">{{ $patient->consultations->count() }} Encounters</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Primary Diagnosis</th>
+                                    <th>Clinician</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($patient->consultations as $consult)
+                                    <tr>
+                                        <td>{{ $consult->created_at->format('Y-m-d H:i') }}</td>
+                                        <td>
+                                            <span class="fw-bold text-dark">{{ $consult->primary_diagnosis ?? 'In Progress' }}</span>
+                                            @if($consult->diagnosis_type)
+                                                <span class="badge bg-light text-secondary border ms-1">{{ ucfirst($consult->diagnosis_type) }}</span>
+                                            @endif
+                                            @if($consult->icd11_code)
+                                                <span class="badge bg-light text-dark border ms-1 font-monospace">{{ $consult->icd11_code }}</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $consult->clinician->name ?? 'Attending Clinician' }}</td>
+                                        <td>
+                                            @if($consult->isSigned())
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-lock-fill"></i> Signed</span>
+                                            @else
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Draft</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-end">
+                                            @if(Auth::user()->hasRole('doctor'))
+                                                <a href="{{ route('admin.consultations.show', $consult->id) }}" class="btn btn-sm btn-outline-primary">
+                                                    View Notes
+                                                </a>
+                                            @else
+                                                <span class="text-muted small">Locked</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">No clinical consultation records documented yet.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Prescriptions History -->
+                <div class="card border-0 shadow-sm rounded-4 mt-4">
+                    <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+                        <h2 class="h6 fw-bold text-dark mb-0">
+                            <i class="bi bi-capsule text-primary me-2"></i> Medication Prescriptions & Fulfillment
+                        </h2>
+                        <span class="badge bg-light text-secondary border">{{ $patient->prescriptions->count() }} Orders</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Prescription #</th>
+                                    <th>Date</th>
+                                    <th>Medications</th>
+                                    <th>Prescriber</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($patient->prescriptions as $rx)
+                                    <tr>
+                                        <td><code class="fw-bold">{{ $rx->prescription_number }}</code></td>
+                                        <td>{{ $rx->created_at->format('Y-m-d') }}</td>
+                                        <td>
+                                            @foreach($rx->items as $item)
+                                                <div>&bull; {{ $item->medication_name }} ({{ $item->quantity_prescribed }} units)</div>
+                                            @endforeach
+                                        </td>
+                                        <td>{{ $rx->prescriber->name ?? 'Doctor' }}</td>
+                                        <td>
+                                            @if($rx->status === 'dispensed')
+                                                <span class="badge bg-success-subtle text-success">Dispensed</span>
+                                            @elseif($rx->status === 'partially_dispensed')
+                                                <span class="badge bg-info-subtle text-info">Partial</span>
+                                            @elseif($rx->status === 'finalized')
+                                                <span class="badge bg-primary-subtle text-primary">At Pharmacy</span>
+                                            @elseif($rx->status === 'cancelled')
+                                                <span class="badge bg-danger-subtle text-danger">Cancelled</span>
+                                            @else
+                                                <span class="badge bg-secondary-subtle text-secondary">Draft</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="{{ route('admin.prescriptions.show', $rx->id) }}" class="btn btn-sm btn-outline-primary">
+                                                View Order
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">No prescriptions issued for this patient yet.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </div>

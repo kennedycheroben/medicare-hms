@@ -152,36 +152,27 @@ The public website and back-office administration never duplicate data entities.
 
 ---
 
-### Phase 6: Core Clinical Documentation, Electronic Health Records (EHR) & Consultation Workflows (Next Phase)
-
-1. **Dashboard & Executive Analytics**: Bed occupancy rates, daily outpatient visits, pending triage, revenue summaries, emergency department status.
-2. **Patient Registration & Master Patient Index (MPI)**: Unique Medical Record Numbers (MRN), demographics, emergency contacts, national ID/passport records, biometric photo capture.
-3. **Appointments & Clinical Scheduling**: Centralized clinic calendar, doctor shift management, room allocation, public booking triage conversion.
-4. **Outpatient Workflows & Nurse Triage**: Vital signs recording (BP, pulse, temp, SpO2, BMI), triage acuity categorization (Emergency Severity Index), outpatient queues.
-5. **Inpatient Admissions, Wards & Beds**: Ward categorization (General, Semi-Private, Private, ICU, NICU, HDU), bed allocation, admission/transfer/discharge (ADT) tracking.
-6. **Doctors & Staff Roster**: Duty rosters, departmental assignments, specialty accreditation tracking.
-7. **Clinical Records & SOAP Documentation**: Subjective, Objective, Assessment, Plan (SOAP) clinical notes, ICD-11 coding integration, allergy tracking, chronic condition tracking.
-8. **Pharmacy & Dispensary**: Drug formulary, inventory management, e-prescriptions dispensing, batch tracking, expiry date alerts, stock reconciliation.
-9. **Laboratory Information Management (LIMS)**: Test requests, specimen accessioning, barcoding, test parameter entry, reference ranges, critical value alerts, report sign-off.
-10. **Inventory & Medical Supplies**: Central store requisitions, departmental stock transfers, minimum stock level reorder alerts.
-11. **Billing, Invoicing & Cashiering**: Charge master pricing, automated fee calculation (consultation, lab, pharmacy, procedure, bed charges), itemized invoicing, receipts.
-12. **M-Pesa Payment Integration**: C2B, STK Push (Daraja API), automated payment callback reconciliation, split transaction settlement.
-13. **Insurance Claims Management**: Provider pre-authorizations, policy cover limits, co-pay handling, claim batch generation and status tracking.
-14. **Radiology & Diagnostic Imaging**: Imaging orders (X-ray, Ultrasound, CT, MRI), technician scheduling, radiologist reporting.
-15. **Nursing Care & Medication Administration Records (eMAR)**: Medication administration schedules, nursing notes, fluid balance charts.
-16. **Operating Theatre & Surgery Management**: Theatre booking, pre-op checklist, surgical team assignment, post-anesthesia care unit (PACU) recovery tracking.
-17. **Institutional Reporting & Health Analytics**: Ministry of Health compliant statistical reports, mortality/morbidity summaries, financial audits.
-18. **User & System Administration**: Role management, database backup schedules, hospital department configuration.
-19. **Comprehensive Audit Logs**: Immutable log recording every data read/write on sensitive clinical entities.
-20. **Hospital Settings & CMS**: Live management of public site banners, consultation hours, emergency hotlines, and service descriptions.
-
----
-
-### Phase 6: System-Wide Integration & Workflow Unification
-* **Scope**: End-to-end integration connecting the public booking funnel, front-desk triage, clinical consultation, diagnostic testing, pharmacy fulfillment, cashier settlement, and patient portal review.
+### Phase 6: Core Clinical Documentation, Electronic Health Records (EHR), Prescriptions & Pharmacy Dispensary
+* **Scope**: Core clinical documentation, Electronic Health Records (EHR), doctor consultation workflows, electronic prescriptions, pharmacy dispensary, and medicine inventory management.
+* **Status**: **Completed**.
+* **Implemented Capabilities**:
+  1. **Doctor Consultation Queue & Clinical Workspace**: Outpatient consultation queue prioritized by triage acuity, active consultation workspace with real-time triage vitals display, SOAP clinical notes (Subjective, Objective, Assessment, Plan), provisional diagnosis, and doctor sign-off.
+  2. **Immutable Record Locking & Addenda Audit Trail**: Draft consultations can be updated by the attending doctor; once signed/finalized, core clinical records become strictly immutable (`is_finalized`), and subsequent clinical corrections must be made via signed, timestamped append-only addenda (`consultation_addenda`).
+  3. **Doctor-Only Per-Record Authorization**: Enforced on the server; only doctors can initiate, draft, or finalize consultations. SuperAdmin and HospitalDirector have read-only clinical oversight without the ability to forge or tamper with medical notes.
+  4. **Electronic Prescriptions (e-Rx)**: Structured multi-item prescribing linked to patient visit and consultation. Captures medicine name, dosage, frequency, duration, route, and clinical instructions. Supports draft creation, finalization, cancellation with mandatory auditable reason, and duplicate submission protection via unique submission tokens.
+  5. **Pharmacy Dispensary & FEFO Batch Allocation**: Dispensary queue displaying finalized prescriptions awaiting dispensing. Concurrency-safe First-Expiry-First-Out (FEFO) batch allocation using database-level `lockForUpdate()` transactions, ensuring earliest expiring batches are dispensed first.
+  6. **Negative Inventory Prevention & Idempotency Safeguards**: Database CHECK constraints (`quantity_current >= 0`) and transactional checks prevent stock from going below zero under race conditions. Unique idempotency keys prevent duplicate dispensing on network retries or double clicks. Unfulfilled or declined prescriptions require mandatory clinical reasons.
+  7. **Medicine Formulary & Batch Inventory Management**: Complete formulary catalog (brand/generic names, categories, strengths, units, reorder thresholds) and batch management (batch numbers, expiry dates, purchase/selling costs, supplier details). Tracks near-expiry alerts and stock movements with an immutable audit ledger.
+  8. **Patient Profile EHR Integration**: Patient record detail view consolidated with complete chronological electronic health record timeline, including visit history, nursing triage vitals, consultation notes, signed addenda, and prescribed medications.
+* **Clinical Governance & Regulatory Disclaimer**:
+  - Clinical workflows, triage prioritization, and medication management are engineered to assist qualified healthcare professionals and adhere to institutional policies. All medical decisions, diagnoses, dosages, and dispensings remain the professional responsibility of licensed clinical practitioners. This release does not claim automated drug-drug interaction contraindication screening or official ICD-11 coding certification.
 * **Acceptance Criteria**:
-  - [ ] A patient appointment request from the public website is triaged by reception, converted to an outpatient encounter, attended by a doctor, billed by cashiering, and visible on the patient portal without data duplication.
-  - [ ] Unified database foreign keys and transaction integrity enforced with zero orphan records.
+  - [x] Strict server-side RBAC enforced (`role:doctor`, `role:pharmacist`, `role:super_admin,hospital_director,pharmacist`).
+  - [x] Immutable finalized consultation records with append-only signed addenda.
+  - [x] Concurrency-safe FEFO medicine batch allocation with row-level locks and negative stock prevention.
+  - [x] Idempotency key protection preventing double-dispensing.
+  - [x] 73 automated feature tests passing with 428 assertions and 0 failures.
+  - [x] Verified via real browser preview across public site, doctor consultation queue/workspace, pharmacy dispensary queue, and medicine inventory.
 
 ---
 

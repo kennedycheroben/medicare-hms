@@ -145,4 +145,28 @@ class Patient extends Model
     {
         return $this->belongsTo(User::class, 'registered_by');
     }
+
+    /**
+     * All doctor consultations for this patient.
+     */
+    public function consultations(): HasMany
+    {
+        return $this->hasMany(Consultation::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * All prescriptions issued to this patient.
+     */
+    public function prescriptions(): HasMany
+    {
+        return $this->hasMany(Prescription::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * All triage assessments for this patient.
+     */
+    public function triageRecords(): HasMany
+    {
+        return $this->hasMany(TriageRecord::class)->orderBy('triaged_at', 'desc');
+    }
 }

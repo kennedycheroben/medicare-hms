@@ -109,4 +109,12 @@ class Visit extends Model
     {
         return $this->hasOne(TriageRecord::class);
     }
+
+    /**
+     * Associated medical consultation / clinical encounter record.
+     */
+    public function consultation(): HasOne
+    {
+        return $this->hasOne(Consultation::class);
+    }
 }

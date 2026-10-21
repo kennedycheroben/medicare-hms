@@ -218,11 +218,12 @@
                 $user = Auth::user();
                 $isSuperAdmin = $user && $user->hasRole('super_admin');
                 $isDirector = $user && $user->hasRole(['super_admin', 'hospital_director']);
-                $isDoctor = $user && $user->hasRole(['super_admin', 'doctor']);
+                $isDoctor = $user && $user->hasRole('doctor');
+                $isPharmacist = $user && $user->hasRole('pharmacist');
+                $canViewInventory = $user && $user->hasRole(['super_admin', 'hospital_director', 'pharmacist']);
                 $isTriage = $user && $user->hasRole(['super_admin', 'nurse', 'receptionist']);
                 $isIntake = $user && $user->hasRole(['super_admin', 'receptionist', 'nurse']);
                 $isPatientViewer = $user && $user->hasRole(['super_admin', 'hospital_director', 'doctor', 'nurse', 'receptionist']);
-                $isPharmacy = $user && $user->hasRole(['super_admin', 'pharmacist']);
                 $isLab = $user && $user->hasRole(['super_admin', 'lab_technician']);
                 $isBilling = $user && $user->hasRole(['super_admin', 'cashier']);
             @endphp
@@ -254,16 +255,27 @@
                 @endif
 
                 @if($isDoctor)
-                    <a href="{{ route('admin.clinical.index') }}" class="nav-link {{ request()->routeIs('admin.clinical.*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.consultations.index') }}" class="nav-link {{ request()->routeIs('admin.consultations.*') ? 'active' : '' }}">
                         <i class="bi bi-stethoscope"></i>
-                        <span>Clinical EHR</span>
+                        <span>Doctor Consultations</span>
                     </a>
                 @endif
 
-                @if($isPharmacy)
+                @if($isPharmacist)
                     <a href="{{ route('admin.pharmacy.index') }}" class="nav-link {{ request()->routeIs('admin.pharmacy.*') ? 'active' : '' }}">
                         <i class="bi bi-capsule"></i>
-                        <span>Pharmacy</span>
+                        <span>Pharmacy Dispensary</span>
+                    </a>
+                @endif
+
+                @if($canViewInventory)
+                    <a href="{{ route('admin.inventory.index') }}" class="nav-link {{ request()->routeIs('admin.inventory.index') || request()->routeIs('admin.inventory.medicines.*') ? 'active' : '' }}">
+                        <i class="bi bi-boxes"></i>
+                        <span>Medicine Inventory</span>
+                    </a>
+                    <a href="{{ route('admin.inventory.movements') }}" class="nav-link {{ request()->routeIs('admin.inventory.movements') ? 'active' : '' }}">
+                        <i class="bi bi-arrow-left-right"></i>
+                        <span>Stock Movements</span>
                     </a>
                 @endif
 

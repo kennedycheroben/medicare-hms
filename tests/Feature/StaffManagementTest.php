@@ -81,7 +81,7 @@ class StaffManagementTest extends TestCase
         $responseReceptionist = $this->actingAs($this->receptionist)->get('/admin/staff');
         $responseReceptionist->assertStatus(403);
 
-        auth()->logout();
+        \Illuminate\Support\Facades\Auth::guard('web')->forgetUser();
         $responseGuest = $this->get('/admin/staff');
         $responseGuest->assertRedirect('/admin/login');
     }
