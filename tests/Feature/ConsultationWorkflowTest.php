@@ -449,4 +449,303 @@ class ConsultationWorkflowTest extends TestCase
             'resource_id' => (string) $consultation->id,
         ]);
     }
+
+    public function test_unlinked_doctor_is_denied_all_clinical_consultation_access_and_fails_closed(): void
+    {
+        $unlinkedDoctor = User::create([
+            'name' => 'Dr. Unlinked Practitioner',
+            'email' => 'unlinked.doctor@medicare.local',
+            'password' => 'SecurePass123!',
+            'role' => UserRole::DOCTOR,
+            'doctor_id' => null,
+            'department_id' => $this->department->id,
+            'is_active' => true,
+        ]);
+
+        $consultation = Consultation::create([
+            'visit_id' => $this->visit->id,
+            'patient_id' => $this->patient->id,
+            'doctor_id' => $this->doctorProfile1->id,
+            'clinician_id' => $this->doctorUser1->id,
+            'status' => 'draft',
+            'chief_complaint' => 'Draft complaint',
+        ]);
+
+        // 1. Consultation queue access denied
+        $this->actingAs($unlinkedDoctor)
+            ->get(route('admin.consultations.index'))
+            ->assertForbidden();
+
+        // 2. Starting visit denied
+        $this->actingAs($unlinkedDoctor)
+            ->post(route('admin.consultations.start', $this->visit->id))
+            ->assertForbidden();
+
+        // 3. Viewing draft consultation denied
+        $this->actingAs($unlinkedDoctor)
+            ->get(route('admin.consultations.show', $consultation->id))
+            ->assertForbidden();
+
+        // 4. Updating draft consultation denied
+        $this->actingAs($unlinkedDoctor)
+            ->put(route('admin.consultations.update', $consultation->id), [
+                'chief_complaint' => 'Attempted unlinked edit',
+            ])
+            ->assertForbidden();
+
+        // 5. Signing consultation denied
+        $this->actingAs($unlinkedDoctor)
+            ->post(route('admin.consultations.sign', $consultation->id), [
+                'chief_complaint' => 'Attempted unlinked sign',
+                'history_present_illness' => 'Narrative',
+                'examination_findings' => 'Findings',
+                'assessment' => 'Assessment',
+                'diagnosis_type' => 'confirmed',
+                'primary_diagnosis' => 'Diagnosis',
+                'treatment_plan' => 'Plan',
+            ])
+            ->assertForbidden();
+
+        // 6. Viewing signed consultation denied for unlinked doctor
+        $signedVisit = Visit::create([
+            'visit_number' => 'VST-TEST-SIGNED-999',
+            'patient_id' => $this->patient->id,
+            'department_id' => $this->department->id,
+            'doctor_id' => $this->doctorProfile1->id,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'Follow-up clinical assessment',
+            'priority' => 'standard',
+            'status' => 'completed',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subDay(),
+        ]);
+
+        $signedConsultation = Consultation::create([
+            'visit_id' => $signedVisit->id,
+            'patient_id' => $this->patient->id,
+            'doctor_id' => $this->doctorProfile1->id,
+            'clinician_id' => $this->doctorUser1->id,
+            'status' => 'signed',
+            'signed_at' => now(),
+            'signed_by' => $this->doctorUser1->id,
+            'chief_complaint' => 'Signed clinical notes',
+            'history_present_illness' => 'Illness description',
+            'examination_findings' => 'Findings',
+            'assessment' => 'Assessment',
+            'diagnosis_type' => 'confirmed',
+            'primary_diagnosis' => 'Acute Pharyngitis',
+            'treatment_plan' => 'Therapy',
+        ]);
+
+        $this->actingAs($unlinkedDoctor)
+            ->get(route('admin.consultations.show', $signedConsultation->id))
+            ->assertForbidden();
+
+        // 7. Creating addendum denied for unlinked doctor
+        $this->actingAs($unlinkedDoctor)
+            ->post(route('admin.consultations.addenda.store', $signedConsultation->id), [
+                'reason_for_amendment' => 'Unauthorized amendment attempt',
+                'addendum_notes' => 'Unauthorized notes',
+            ])
+            ->assertForbidden();
+
+        // Verify audit trail captures the fail-closed rejection
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.unlinked_doctor_access_attempt',
+        ]);
+    }
+
+    public function test_queue_excludes_visits_assigned_to_other_doctors_even_in_same_department(): void
+    {
+        // Visit 1 assigned to doctorProfile1 (Dr. Jane Smith)
+        // Create Visit 2 assigned to doctorProfile2 (Dr. Mark Davis) in SAME department
+        $visit2 = Visit::create([
+            'visit_number' => 'VST-TEST-10002',
+            'patient_id' => $this->patient->id,
+            'department_id' => $this->department->id,
+            'doctor_id' => $this->doctorProfile2->id,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'Migraine headache',
+            'priority' => 'urgent',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(15),
+        ]);
+
+        // Create Visit 3 unassigned (First Available) in SAME department
+        $visit3 = Visit::create([
+            'visit_number' => 'VST-TEST-10003',
+            'patient_id' => $this->patient->id,
+            'department_id' => $this->department->id,
+            'doctor_id' => null,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'General health check',
+            'priority' => 'standard',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(10),
+        ]);
+
+        // Dr. Jane Smith views her queue
+        $response1 = $this->actingAs($this->doctorUser1)
+            ->get(route('admin.consultations.index'))
+            ->assertOk();
+
+        // Dr. Jane Smith sees her own visit and the unassigned visit
+        $response1->assertSee($this->visit->visit_number);
+        $response1->assertSee($visit3->visit_number);
+        // Dr. Jane Smith MUST NOT see Dr. Mark Davis's assigned visit
+        $response1->assertDontSee($visit2->visit_number);
+
+        Auth::guard('web')->forgetUser();
+
+        // Dr. Mark Davis views his queue
+        $response2 = $this->actingAs($this->doctorUser2)
+            ->get(route('admin.consultations.index'))
+            ->assertOk();
+
+        // Dr. Mark Davis sees his own visit and the unassigned visit
+        $response2->assertSee($visit2->visit_number);
+        $response2->assertSee($visit3->visit_number);
+        // Dr. Mark Davis MUST NOT see Dr. Jane Smith's assigned visit
+        $response2->assertDontSee($this->visit->visit_number);
+    }
+
+    public function test_doctor_cannot_take_over_in_progress_consultation_initiated_by_another_clinician(): void
+    {
+        // Create an unassigned visit
+        $unassignedVisit = Visit::create([
+            'visit_number' => 'VST-TEST-UNASSIGNED',
+            'patient_id' => $this->patient->id,
+            'department_id' => $this->department->id,
+            'doctor_id' => null,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'Acute cough',
+            'priority' => 'urgent',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(20),
+        ]);
+
+        // Dr. Jane Smith starts consultation on this visit
+        $this->actingAs($this->doctorUser1)
+            ->post(route('admin.consultations.start', $unassignedVisit->id))
+            ->assertRedirect();
+
+        $this->assertEquals('in_consultation', $unassignedVisit->fresh()->status);
+        $consultation = Consultation::where('visit_id', $unassignedVisit->id)->first();
+        $this->assertNotNull($consultation);
+        $this->assertEquals($this->doctorUser1->id, $consultation->clinician_id);
+
+        Auth::guard('web')->forgetUser();
+
+        // Dr. Mark Davis attempts to take over and start this same in-progress visit
+        $this->actingAs($this->doctorUser2)
+            ->post(route('admin.consultations.start', $unassignedVisit->id))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.unauthorized_takeover_attempt',
+        ]);
+    }
+
+    public function test_direct_url_access_to_unauthorized_draft_is_blocked_and_audited(): void
+    {
+        $consultation = Consultation::create([
+            'visit_id' => $this->visit->id,
+            'patient_id' => $this->patient->id,
+            'doctor_id' => $this->doctorProfile1->id,
+            'clinician_id' => $this->doctorUser1->id,
+            'status' => 'draft',
+            'chief_complaint' => 'Highly confidential psychiatric assessment notes',
+        ]);
+
+        // Dr. Mark Davis attempts direct URL GET
+        $this->actingAs($this->doctorUser2)
+            ->get(route('admin.consultations.show', $consultation->id))
+            ->assertForbidden();
+
+        // Dr. Mark Davis attempts direct URL PUT
+        $this->actingAs($this->doctorUser2)
+            ->put(route('admin.consultations.update', $consultation->id), [
+                'chief_complaint' => 'Tampered text',
+            ])
+            ->assertForbidden();
+
+        // Dr. Mark Davis attempts direct URL POST sign
+        $this->actingAs($this->doctorUser2)
+            ->post(route('admin.consultations.sign', $consultation->id), [
+                'chief_complaint' => 'Tampered text',
+                'history_present_illness' => 'Illness narrative',
+                'examination_findings' => 'Findings',
+                'assessment' => 'Assessment',
+                'diagnosis_type' => 'confirmed',
+                'primary_diagnosis' => 'Diagnosis',
+                'treatment_plan' => 'Plan',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.unauthorized_draft_access',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.unauthorized_edit_attempt',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.unauthorized_sign_attempt',
+        ]);
+    }
+
+    public function test_signed_record_is_immutable_against_author_and_other_doctors(): void
+    {
+        $consultation = Consultation::create([
+            'visit_id' => $this->visit->id,
+            'patient_id' => $this->patient->id,
+            'doctor_id' => $this->doctorProfile1->id,
+            'clinician_id' => $this->doctorUser1->id,
+            'status' => 'signed',
+            'signed_at' => now()->subDay(),
+            'signed_by' => $this->doctorUser1->id,
+            'chief_complaint' => 'Original immutable notes',
+            'history_present_illness' => 'Original illness history',
+            'examination_findings' => 'Original examination',
+            'assessment' => 'Original assessment',
+            'diagnosis_type' => 'confirmed',
+            'primary_diagnosis' => 'Original Primary Diagnosis',
+            'treatment_plan' => 'Original plan',
+        ]);
+
+        // 1. Author doctor cannot update signed record
+        $this->actingAs($this->doctorUser1)
+            ->put(route('admin.consultations.update', $consultation->id), [
+                'chief_complaint' => 'Attempted author modification',
+            ])
+            ->assertForbidden();
+
+        // 2. Author doctor cannot re-sign signed record
+        $this->actingAs($this->doctorUser1)
+            ->post(route('admin.consultations.sign', $consultation->id), [
+                'chief_complaint' => 'Attempted re-sign',
+                'history_present_illness' => 'Illness narrative',
+                'examination_findings' => 'Findings',
+                'assessment' => 'Assessment',
+                'diagnosis_type' => 'confirmed',
+                'primary_diagnosis' => 'Diagnosis',
+                'treatment_plan' => 'Plan',
+            ])
+            ->assertForbidden();
+
+        // 3. Another doctor cannot update signed record
+        $this->actingAs($this->doctorUser2)
+            ->put(route('admin.consultations.update', $consultation->id), [
+                'chief_complaint' => 'Attempted other doctor modification',
+            ])
+            ->assertForbidden();
+
+        // Verify database content was strictly preserved
+        $consultation->refresh();
+        $this->assertEquals('Original immutable notes', $consultation->chief_complaint);
+        $this->assertEquals('Original Primary Diagnosis', $consultation->primary_diagnosis);
+        $this->assertEquals('signed', $consultation->status);
+    }
 }

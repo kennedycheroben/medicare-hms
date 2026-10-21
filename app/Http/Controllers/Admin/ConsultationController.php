@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Consultation;
 use App\Models\ConsultationAddendum;
 use App\Models\Medicine;
+use App\Models\User;
 use App\Models\Visit;
 use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
@@ -17,29 +19,74 @@ use Illuminate\View\View;
 class ConsultationController extends Controller
 {
     /**
+     * Authorize that the authenticated user is an active doctor with a valid,
+     * linked doctor profile record. Fails closed (HTTP 403) for unlinked accounts.
+     */
+    protected function authorizeAttendingDoctor(): User
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (! $user || ! $user->hasValidDoctorProfile()) {
+            AuditService::record(
+                action: 'consultation.unlinked_doctor_access_attempt',
+                resourceType: 'consultation',
+                resourceId: 'unauthorized',
+                details: [
+                    'user_id' => $user?->id,
+                    'doctor_id' => $user?->doctor_id,
+                    'role' => $user?->role instanceof UserRole ? $user->role->value : (string) $user?->role,
+                ],
+                outcome: 'denied',
+                actor: $user
+            );
+
+            abort(403, 'A valid linked doctor profile is required to access clinical consultations.');
+        }
+
+        return $user;
+    }
+
+    /**
      * Display the doctor's consultation queue and recent consultations.
      */
     public function index(Request $request): View
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        $doctorId = $user->doctor_id;
+        $user = $this->authorizeAttendingDoctor();
+        $doctorId = (int) $user->doctor_id;
 
         // Active queue: visits triaged or currently in consultation
         $query = Visit::with(['patient', 'department', 'doctor', 'triageRecord.nurse'])
             ->whereIn('status', ['triaged', 'in_consultation']);
 
-        // Scope to this doctor or unassigned visits for doctor's department
-        if ($doctorId) {
-            $query->where(function ($q) use ($doctorId, $user) {
-                $q->where('doctor_id', $doctorId)
-                    ->orWhereNull('doctor_id');
+        // Strict queue scoping:
+        // 1. Explicitly assigned to this doctor (doctor_id = $doctorId)
+        // 2. OR unassigned (doctor_id IS NULL) in the doctor's department (or hospital-wide if visit has no department)
+        // An explicit assignment to another doctor MUST NEVER be overridden by department matching!
+        $query->where(function ($q) use ($doctorId, $user) {
+            $q->where('doctor_id', $doctorId)
+                ->orWhere(function ($unassignedQuery) use ($user) {
+                    $unassignedQuery->whereNull('doctor_id');
 
-                if ($user->department_id) {
-                    $q->orWhere('department_id', $user->department_id);
-                }
-            });
-        }
+                    // If visit is in_consultation, ensure it was initiated by this clinician or uninitiated
+                    $unassignedQuery->where(function ($statusQuery) use ($user) {
+                        $statusQuery->where('status', 'triaged')
+                            ->orWhere(function ($inConsultQuery) use ($user) {
+                                $inConsultQuery->where('status', 'in_consultation')
+                                    ->whereDoesntHave('consultation', function ($cq) use ($user) {
+                                        $cq->where('clinician_id', '!=', $user->id);
+                                    });
+                            });
+                    });
+
+                    if ($user->department_id) {
+                        $unassignedQuery->where(function ($deptQuery) use ($user) {
+                            $deptQuery->where('department_id', $user->department_id)
+                                ->orWhereNull('department_id');
+                        });
+                    }
+                });
+        });
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -77,16 +124,16 @@ class ConsultationController extends Controller
      */
     public function start(Request $request, Visit $visit): RedirectResponse
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
+        $user = $this->authorizeAttendingDoctor();
 
         if (! in_array($visit->status, ['triaged', 'in_consultation'], true)) {
             return redirect()->route('admin.consultations.index')
                 ->withErrors(['error' => 'This visit is not in a triaged or consultation-ready state.']);
         }
 
-        // If visit assigned to another doctor, prevent unauthorized takeover
-        if ($visit->doctor_id && $user->doctor_id && (int) $visit->doctor_id !== (int) $user->doctor_id) {
+        // Prevent unauthorized takeover of another doctor's assigned visit
+        // Department-based access must not override explicit assignment restriction
+        if ($visit->doctor_id && (int) $visit->doctor_id !== (int) $user->doctor_id) {
             AuditService::record(
                 action: 'consultation.unauthorized_takeover_attempt',
                 resourceType: 'visit',
@@ -94,6 +141,7 @@ class ConsultationController extends Controller
                 details: [
                     'assigned_doctor_id' => $visit->doctor_id,
                     'attempting_user_id' => $user->id,
+                    'attempting_doctor_id' => $user->doctor_id,
                 ],
                 outcome: 'denied',
                 actor: $user
@@ -102,23 +150,44 @@ class ConsultationController extends Controller
             abort(403, 'This clinical visit is assigned to another attending physician.');
         }
 
-        $consultation = DB::transaction(function () use ($visit, $user) {
+        // Check if an existing consultation for this visit was started by another clinician
+        $existingConsultation = Consultation::where('visit_id', $visit->id)->first();
+        if ($existingConsultation && $existingConsultation->clinician_id !== $user->id) {
+            AuditService::record(
+                action: 'consultation.unauthorized_takeover_attempt',
+                resourceType: 'consultation',
+                resourceId: (string) $existingConsultation->id,
+                details: [
+                    'visit_id' => $visit->id,
+                    'author_clinician_id' => $existingConsultation->clinician_id,
+                    'attempting_user_id' => $user->id,
+                ],
+                outcome: 'denied',
+                actor: $user
+            );
+
+            abort(403, 'This clinical consultation was initiated by another attending clinician.');
+        }
+
+        $consultation = DB::transaction(function () use ($visit, $user, $existingConsultation) {
             // Update visit status if triaged
             $updateData = ['status' => 'in_consultation'];
-            if (! $visit->doctor_id && $user->doctor_id) {
+            if (! $visit->doctor_id) {
                 $updateData['doctor_id'] = $user->doctor_id;
             }
             $visit->update($updateData);
 
-            $consultation = Consultation::firstOrCreate(
-                ['visit_id' => $visit->id],
-                [
+            if ($existingConsultation) {
+                $consultation = $existingConsultation;
+            } else {
+                $consultation = Consultation::create([
+                    'visit_id' => $visit->id,
                     'patient_id' => $visit->patient_id,
                     'doctor_id' => $visit->doctor_id ?? $user->doctor_id,
                     'clinician_id' => $user->id,
                     'status' => 'draft',
-                ]
-            );
+                ]);
+            }
 
             AuditService::record(
                 action: 'consultation.started',
@@ -143,8 +212,7 @@ class ConsultationController extends Controller
      */
     public function show(Consultation $consultation): View
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
+        $user = $this->authorizeAttendingDoctor();
 
         // Enforce confidentiality: draft notes only visible to authoring clinician
         if ($consultation->isDraft() && $consultation->clinician_id !== $user->id) {
@@ -204,10 +272,23 @@ class ConsultationController extends Controller
      */
     public function update(Request $request, Consultation $consultation): RedirectResponse
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
+        $user = $this->authorizeAttendingDoctor();
 
         if (! $consultation->canBeEditedBy($user)) {
+            AuditService::record(
+                action: 'consultation.unauthorized_edit_attempt',
+                resourceType: 'consultation',
+                resourceId: (string) $consultation->id,
+                details: [
+                    'consultation_id' => $consultation->id,
+                    'status' => $consultation->status,
+                    'author_id' => $consultation->clinician_id,
+                    'attempting_user_id' => $user->id,
+                ],
+                outcome: 'denied',
+                actor: $user
+            );
+
             abort(403, 'Unauthorized. This consultation cannot be edited because it is signed or you are not the author.');
         }
 
@@ -246,10 +327,23 @@ class ConsultationController extends Controller
      */
     public function sign(Request $request, Consultation $consultation): RedirectResponse
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
+        $user = $this->authorizeAttendingDoctor();
 
         if (! $consultation->canBeEditedBy($user)) {
+            AuditService::record(
+                action: 'consultation.unauthorized_sign_attempt',
+                resourceType: 'consultation',
+                resourceId: (string) $consultation->id,
+                details: [
+                    'consultation_id' => $consultation->id,
+                    'status' => $consultation->status,
+                    'author_id' => $consultation->clinician_id,
+                    'attempting_user_id' => $user->id,
+                ],
+                outcome: 'denied',
+                actor: $user
+            );
+
             abort(403, 'Only the authoring clinician can sign and lock this consultation record.');
         }
 
@@ -306,8 +400,7 @@ class ConsultationController extends Controller
      */
     public function addendum(Request $request, Consultation $consultation): RedirectResponse
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
+        $user = $this->authorizeAttendingDoctor();
 
         if (! $consultation->isSigned()) {
             return redirect()->route('admin.consultations.show', $consultation->id)

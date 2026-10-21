@@ -99,6 +99,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if the user is an active doctor with a valid linked doctor profile record.
+     */
+    public function hasValidDoctorProfile(): bool
+    {
+        if (! $this->isActive()) {
+            return false;
+        }
+
+        if (! $this->hasRole(UserRole::DOCTOR)) {
+            return false;
+        }
+
+        if (! $this->doctor_id) {
+            return false;
+        }
+
+        if ($this->relationLoaded('doctor')) {
+            return $this->doctor !== null;
+        }
+
+        return $this->doctor()->exists();
+    }
+
+    /**
      * User's assigned department (if applicable).
      */
     public function department(): BelongsTo
