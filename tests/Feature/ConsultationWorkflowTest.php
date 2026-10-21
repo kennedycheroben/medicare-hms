@@ -294,7 +294,7 @@ class ConsultationWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_doctor_can_sign_consultation_via_put_method_or_spoofing(): void
+    public function test_signing_endpoint_strictly_enforces_post_and_rejects_put_with_405(): void
     {
         $consultation = Consultation::create([
             'visit_id' => $this->visit->id,
@@ -316,9 +316,23 @@ class ConsultationWorkflowTest extends TestCase
             'follow_up_instructions' => 'Return if high fever persists after 48h.',
         ];
 
-        // Verify PUT request does NOT return 405 Method Not Allowed
+        // 1. Direct PUT signing must be rejected with HTTP 405 Method Not Allowed
+        $this->actingAs($this->doctorUser1)
+            ->put(route('admin.consultations.sign', $consultation->id), $payload)
+            ->assertStatus(405);
+
+        $this->assertEquals('draft', $consultation->fresh()->status);
+
+        // 2. POST carrying _method=PUT must be intercepted by Laravel and rejected with HTTP 405
+        $this->actingAs($this->doctorUser1)
+            ->post(route('admin.consultations.sign', $consultation->id), array_merge($payload, ['_method' => 'PUT']))
+            ->assertStatus(405);
+
+        $this->assertEquals('draft', $consultation->fresh()->status);
+
+        // 3. Normal clean POST request succeeds
         $response = $this->actingAs($this->doctorUser1)
-            ->put(route('admin.consultations.sign', $consultation->id), $payload);
+            ->post(route('admin.consultations.sign', $consultation->id), $payload);
 
         $response->assertRedirect(route('admin.consultations.show', $consultation->id));
         $response->assertSessionHas('status');
@@ -327,7 +341,7 @@ class ConsultationWorkflowTest extends TestCase
         $this->assertEquals('signed', $consultation->status);
         $this->assertTrue($consultation->isSigned());
 
-        // Attempting to sign an already signed consultation must be rejected
+        // 4. Attempting to sign an already signed consultation must be rejected with 403 Forbidden
         $this->actingAs($this->doctorUser1)
             ->post(route('admin.consultations.sign', $consultation->id), $payload)
             ->assertForbidden();

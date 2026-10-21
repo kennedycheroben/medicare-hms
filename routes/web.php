@@ -141,7 +141,7 @@ Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
         Route::post('/consultations/start/{visit}', [\App\Http\Controllers\Admin\ConsultationController::class, 'start'])->name('admin.consultations.start');
         Route::get('/consultations/{consultation}', [\App\Http\Controllers\Admin\ConsultationController::class, 'show'])->name('admin.consultations.show');
         Route::put('/consultations/{consultation}', [\App\Http\Controllers\Admin\ConsultationController::class, 'update'])->name('admin.consultations.update');
-        Route::match(['POST', 'PUT'], '/consultations/{consultation}/sign', [\App\Http\Controllers\Admin\ConsultationController::class, 'sign'])->name('admin.consultations.sign');
+        Route::post('/consultations/{consultation}/sign', [\App\Http\Controllers\Admin\ConsultationController::class, 'sign'])->name('admin.consultations.sign');
         Route::post('/consultations/{consultation}/addenda', [\App\Http\Controllers\Admin\ConsultationController::class, 'addendum'])->name('admin.consultations.addenda.store');
         Route::post('/consultations/{consultation}/prescriptions', [\App\Http\Controllers\Admin\PrescriptionController::class, 'store'])->name('admin.prescriptions.store');
         Route::post('/prescriptions/{prescription}/finalize', [\App\Http\Controllers\Admin\PrescriptionController::class, 'finalize'])->name('admin.prescriptions.finalize');
