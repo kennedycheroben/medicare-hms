@@ -54,6 +54,7 @@ class ConsultationController extends Controller
     {
         $user = $this->authorizeAttendingDoctor();
         $doctorId = (int) $user->doctor_id;
+        $doctorDepartmentId = $user->getClinicalDepartmentId();
 
         // Active queue: visits triaged or currently in consultation
         $query = Visit::with(['patient', 'department', 'doctor', 'triageRecord.nurse'])
@@ -63,9 +64,11 @@ class ConsultationController extends Controller
         // 1. Explicitly assigned to this doctor (doctor_id = $doctorId)
         // 2. OR unassigned (doctor_id IS NULL) in the doctor's department (or hospital-wide if visit has no department)
         // An explicit assignment to another doctor MUST NEVER be overridden by department matching!
-        $query->where(function ($q) use ($doctorId, $user) {
-            $q->where('doctor_id', $doctorId)
-                ->orWhere(function ($unassignedQuery) use ($user) {
+        $query->where(function ($q) use ($doctorId, $user, $doctorDepartmentId) {
+            $q->where('doctor_id', $doctorId);
+
+            if ($doctorDepartmentId) {
+                $q->orWhere(function ($unassignedQuery) use ($user, $doctorDepartmentId) {
                     $unassignedQuery->whereNull('doctor_id');
 
                     // If visit is in_consultation, ensure it was initiated by this clinician or uninitiated
@@ -79,13 +82,12 @@ class ConsultationController extends Controller
                             });
                     });
 
-                    if ($user->department_id) {
-                        $unassignedQuery->where(function ($deptQuery) use ($user) {
-                            $deptQuery->where('department_id', $user->department_id)
-                                ->orWhereNull('department_id');
-                        });
-                    }
+                    $unassignedQuery->where(function ($deptQuery) use ($doctorDepartmentId) {
+                        $deptQuery->where('department_id', $doctorDepartmentId)
+                            ->orWhereNull('department_id');
+                    });
                 });
+            }
         });
 
         if ($search = $request->input('search')) {
@@ -150,6 +152,53 @@ class ConsultationController extends Controller
             abort(403, 'This clinical visit is assigned to another attending physician.');
         }
 
+        $doctorDepartmentId = $user->getClinicalDepartmentId();
+
+        // Enforce department authorization for unassigned visits
+        if (! $visit->doctor_id) {
+            // A doctor must have an assigned clinical department to start unassigned visits
+            if (! $doctorDepartmentId) {
+                AuditService::record(
+                    action: 'consultation.unauthorized_department_attempt',
+                    resourceType: 'visit',
+                    resourceId: (string) $visit->id,
+                    details: [
+                        'visit_id' => $visit->id,
+                        'visit_department_id' => $visit->department_id,
+                        'doctor_department_id' => null,
+                        'attempting_user_id' => $user->id,
+                        'attempting_doctor_id' => $user->doctor_id,
+                        'reason' => 'Doctor lacks an assigned clinical department',
+                    ],
+                    outcome: 'denied',
+                    actor: $user
+                );
+
+                abort(403, 'An assigned clinical department is required to start unassigned consultations.');
+            }
+
+            // Deny cross-department access by default: visit department must match doctor department
+            if ($visit->department_id && (int) $visit->department_id !== (int) $doctorDepartmentId) {
+                AuditService::record(
+                    action: 'consultation.unauthorized_department_attempt',
+                    resourceType: 'visit',
+                    resourceId: (string) $visit->id,
+                    details: [
+                        'visit_id' => $visit->id,
+                        'visit_department_id' => $visit->department_id,
+                        'doctor_department_id' => $doctorDepartmentId,
+                        'attempting_user_id' => $user->id,
+                        'attempting_doctor_id' => $user->doctor_id,
+                        'reason' => 'Cross-department access denied',
+                    ],
+                    outcome: 'denied',
+                    actor: $user
+                );
+
+                abort(403, 'You are not authorized to start consultations for visits outside your clinical department.');
+            }
+        }
+
         // Check if an existing consultation for this visit was started by another clinician
         $existingConsultation = Consultation::where('visit_id', $visit->id)->first();
         if ($existingConsultation && $existingConsultation->clinician_id !== $user->id) {
@@ -169,11 +218,14 @@ class ConsultationController extends Controller
             abort(403, 'This clinical consultation was initiated by another attending clinician.');
         }
 
-        $consultation = DB::transaction(function () use ($visit, $user, $existingConsultation) {
+        $consultation = DB::transaction(function () use ($visit, $user, $existingConsultation, $doctorDepartmentId) {
             // Update visit status if triaged
             $updateData = ['status' => 'in_consultation'];
             if (! $visit->doctor_id) {
                 $updateData['doctor_id'] = $user->doctor_id;
+            }
+            if (! $visit->department_id && $doctorDepartmentId) {
+                $updateData['department_id'] = $doctorDepartmentId;
             }
             $visit->update($updateData);
 
@@ -205,6 +257,7 @@ class ConsultationController extends Controller
         });
 
         return redirect()->route('admin.consultations.show', $consultation->id);
+
     }
 
     /**

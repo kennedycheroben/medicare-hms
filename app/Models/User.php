@@ -139,6 +139,23 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the doctor's clinical department ID.
+     * Resolves from the user record or falls back to the linked doctor profile.
+     */
+    public function getClinicalDepartmentId(): ?int
+    {
+        if ($this->department_id) {
+            return (int) $this->department_id;
+        }
+
+        if ($this->doctor_id && $this->doctor) {
+            return $this->doctor->department_id ? (int) $this->doctor->department_id : null;
+        }
+
+        return null;
+    }
+
+    /**
      * Audit log entries where this user was the actor.
      */
     public function auditLogs(): HasMany

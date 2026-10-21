@@ -748,4 +748,266 @@ class ConsultationWorkflowTest extends TestCase
         $this->assertEquals('Original Primary Diagnosis', $consultation->primary_diagnosis);
         $this->assertEquals('signed', $consultation->status);
     }
+
+    public function test_doctor_can_start_unassigned_visit_in_own_department(): void
+    {
+        $unassignedVisit = Visit::create([
+            'visit_number' => 'VST-TEST-OWN-DEPT',
+            'patient_id' => $this->patient->id,
+            'department_id' => $this->department->id,
+            'doctor_id' => null,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'Palpitations and dizziness',
+            'priority' => 'urgent',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(15),
+        ]);
+
+        $response = $this->actingAs($this->doctorUser1)
+            ->post(route('admin.consultations.start', $unassignedVisit->id));
+
+        $consultation = Consultation::where('visit_id', $unassignedVisit->id)->first();
+        $this->assertNotNull($consultation);
+        $this->assertEquals($this->doctorUser1->id, $consultation->clinician_id);
+        $this->assertEquals('draft', $consultation->status);
+
+        $response->assertRedirect(route('admin.consultations.show', $consultation->id));
+
+        $unassignedVisit->refresh();
+        $this->assertEquals('in_consultation', $unassignedVisit->status);
+        $this->assertEquals($this->doctorUser1->doctor_id, $unassignedVisit->doctor_id);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.started',
+            'resource_id' => (string) $consultation->id,
+        ]);
+    }
+
+    public function test_doctor_cannot_start_unassigned_visit_in_another_department(): void
+    {
+        $otherDepartment = Department::where('id', '!=', $this->department->id)->first();
+        $this->assertNotNull($otherDepartment);
+
+        $otherDeptVisit = Visit::create([
+            'visit_number' => 'VST-TEST-OTHER-DEPT',
+            'patient_id' => $this->patient->id,
+            'department_id' => $otherDepartment->id,
+            'doctor_id' => null,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'Pediatric vaccination assessment',
+            'priority' => 'standard',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(20),
+        ]);
+
+        // Dr. Jane Smith (in $this->department) attempts to start unassigned visit in $otherDepartment
+        $this->actingAs($this->doctorUser1)
+            ->post(route('admin.consultations.start', $otherDeptVisit->id))
+            ->assertForbidden();
+
+        $otherDeptVisit->refresh();
+        $this->assertEquals('triaged', $otherDeptVisit->status);
+        $this->assertNull($otherDeptVisit->doctor_id);
+        $this->assertDatabaseMissing('consultations', ['visit_id' => $otherDeptVisit->id]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.unauthorized_department_attempt',
+            'resource_id' => (string) $otherDeptVisit->id,
+        ]);
+    }
+
+    public function test_direct_post_cannot_bypass_department_restrictions(): void
+    {
+        $otherDepartment = Department::where('id', '!=', $this->department->id)->first();
+        $this->assertNotNull($otherDepartment);
+
+        $otherDeptVisit = Visit::create([
+            'visit_number' => 'VST-TEST-DIRECT-POST-DEPT',
+            'patient_id' => $this->patient->id,
+            'department_id' => $otherDepartment->id,
+            'doctor_id' => null,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'Neurology migraine evaluation',
+            'priority' => 'urgent',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(10),
+        ]);
+
+        // 1. Verify unassigned visit in other department is NOT visible in Dr. Jane Smith's queue
+        $this->actingAs($this->doctorUser1)
+            ->get(route('admin.consultations.index'))
+            ->assertOk()
+            ->assertDontSee($otherDeptVisit->visit_number);
+
+        // 2. Direct POST request to start route MUST be rejected with HTTP 403 Forbidden
+        $this->actingAs($this->doctorUser1)
+            ->post(route('admin.consultations.start', $otherDeptVisit->id))
+            ->assertForbidden();
+
+        // 3. Confirm visit integrity is unchanged
+        $otherDeptVisit->refresh();
+        $this->assertEquals('triaged', $otherDeptVisit->status);
+        $this->assertNull($otherDeptVisit->doctor_id);
+        $this->assertDatabaseMissing('consultations', ['visit_id' => $otherDeptVisit->id]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.unauthorized_department_attempt',
+        ]);
+    }
+
+    public function test_missing_department_on_visit_allows_intake_and_adopts_doctor_department(): void
+    {
+        $nullDeptVisit = Visit::create([
+            'visit_number' => 'VST-TEST-NULL-DEPT',
+            'patient_id' => $this->patient->id,
+            'department_id' => null,
+            'doctor_id' => null,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'General walk-in checkup',
+            'priority' => 'standard',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(10),
+        ]);
+
+        // Dr. Jane Smith sees hospital-wide unassigned visit in queue
+        $this->actingAs($this->doctorUser1)
+            ->get(route('admin.consultations.index'))
+            ->assertOk()
+            ->assertSee($nullDeptVisit->visit_number);
+
+        // Dr. Jane Smith starts the unassigned general visit
+        $response = $this->actingAs($this->doctorUser1)
+            ->post(route('admin.consultations.start', $nullDeptVisit->id));
+
+        $consultation = Consultation::where('visit_id', $nullDeptVisit->id)->first();
+        $this->assertNotNull($consultation);
+        $response->assertRedirect(route('admin.consultations.show', $consultation->id));
+
+        // Visit is adopted into Dr. Jane Smith's department
+        $nullDeptVisit->refresh();
+        $this->assertEquals('in_consultation', $nullDeptVisit->status);
+        $this->assertEquals($this->doctorUser1->doctor_id, $nullDeptVisit->doctor_id);
+        $this->assertEquals($this->department->id, $nullDeptVisit->department_id);
+    }
+
+    public function test_doctor_with_null_user_department_resolves_department_from_linked_profile(): void
+    {
+        // Doctor user has department_id = null on users table, but doctor_id is linked to doctorProfile1
+        $doctorWithoutUserDept = User::create([
+            'name' => 'Dr. Profile Department Doctor',
+            'email' => 'profile.dept@medicare.local',
+            'password' => 'SecurePass123!',
+            'role' => UserRole::DOCTOR,
+            'doctor_id' => $this->doctorProfile1->id,
+            'department_id' => null,
+            'is_active' => true,
+        ]);
+
+        $this->assertEquals($this->doctorProfile1->department_id, $doctorWithoutUserDept->getClinicalDepartmentId());
+
+        // Can start visit in doctor profile's department
+        $unassignedVisit = Visit::create([
+            'visit_number' => 'VST-TEST-PROFILE-DEPT',
+            'patient_id' => $this->patient->id,
+            'department_id' => $this->doctorProfile1->department_id,
+            'doctor_id' => null,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'Profile department test',
+            'priority' => 'standard',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(10),
+        ]);
+
+        $this->actingAs($doctorWithoutUserDept)
+            ->post(route('admin.consultations.start', $unassignedVisit->id))
+            ->assertRedirect();
+
+        $unassignedVisit->refresh();
+        $this->assertEquals('in_consultation', $unassignedVisit->status);
+        $this->assertEquals($this->doctorProfile1->id, $unassignedVisit->doctor_id);
+    }
+
+    public function test_doctor_without_clinical_department_cannot_start_unassigned_visit(): void
+    {
+        // Doctor user has doctor_id linked to doctorProfile1, but clinical department is stripped
+        $doctorNoDept = User::create([
+            'name' => 'Dr. No Department Doctor',
+            'email' => 'no.dept@medicare.local',
+            'password' => 'SecurePass123!',
+            'role' => UserRole::DOCTOR,
+            'doctor_id' => $this->doctorProfile1->id,
+            'department_id' => null,
+            'is_active' => true,
+        ]);
+
+        // Simulate doctor profile having no department
+        $fakeDoctorProfile = clone $this->doctorProfile1;
+        $fakeDoctorProfile->department_id = null;
+        $doctorNoDept->setRelation('doctor', $fakeDoctorProfile);
+
+        $this->assertNull($doctorNoDept->getClinicalDepartmentId());
+
+        $unassignedVisit = Visit::create([
+            'visit_number' => 'VST-TEST-NO-DEPT-DOC',
+            'patient_id' => $this->patient->id,
+            'department_id' => $this->department->id,
+            'doctor_id' => null,
+            'visit_type' => 'walk_in',
+            'reason_for_visit' => 'No department test',
+            'priority' => 'standard',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(10),
+        ]);
+
+        $this->actingAs($doctorNoDept)
+            ->post(route('admin.consultations.start', $unassignedVisit->id))
+            ->assertForbidden();
+
+        $unassignedVisit->refresh();
+        $this->assertEquals('triaged', $unassignedVisit->status);
+        $this->assertNull($unassignedVisit->doctor_id);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.unauthorized_department_attempt',
+            'resource_id' => (string) $unassignedVisit->id,
+        ]);
+    }
+
+    public function test_doctor_can_start_explicitly_assigned_visit_even_if_in_different_department(): void
+    {
+        $otherDepartment = Department::where('id', '!=', $this->department->id)->first();
+        $this->assertNotNull($otherDepartment);
+
+        // Visit in another department, but explicitly assigned to Dr. Jane Smith
+        $assignedCrossDeptVisit = Visit::create([
+            'visit_number' => 'VST-TEST-EXPLICIT-CROSS-DEPT',
+            'patient_id' => $this->patient->id,
+            'department_id' => $otherDepartment->id,
+            'doctor_id' => $this->doctorProfile1->id,
+            'visit_type' => 'appointment',
+            'reason_for_visit' => 'Inter-department cardiology consultation',
+            'priority' => 'urgent',
+            'status' => 'triaged',
+            'checked_in_by' => $this->receptionist->id,
+            'checked_in_at' => now()->subMinutes(20),
+        ]);
+
+        // Dr. Jane Smith can start visit explicitly assigned to her
+        $response = $this->actingAs($this->doctorUser1)
+            ->post(route('admin.consultations.start', $assignedCrossDeptVisit->id));
+
+        $consultation = Consultation::where('visit_id', $assignedCrossDeptVisit->id)->first();
+        $this->assertNotNull($consultation);
+        $response->assertRedirect(route('admin.consultations.show', $consultation->id));
+
+        $assignedCrossDeptVisit->refresh();
+        $this->assertEquals('in_consultation', $assignedCrossDeptVisit->status);
+        $this->assertEquals($this->doctorProfile1->id, $assignedCrossDeptVisit->doctor_id);
+    }
 }
