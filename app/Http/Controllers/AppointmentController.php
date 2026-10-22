@@ -26,7 +26,7 @@ class AppointmentController extends Controller
         $validated = $request->validate([
             'patient_name' => ['required', 'string', 'min:3', 'max:100'],
             'patient_email' => ['required', 'email', 'max:100'],
-            'patient_phone' => ['required', 'string', 'min:7', 'max:25'],
+            'patient_phone' => ['required', 'string', new \App\Rules\ValidPhoneNumber()],
             'department_id' => ['required', 'exists:departments,id'],
             'doctor_id' => ['nullable', 'exists:doctors,id'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today'],
@@ -49,7 +49,7 @@ class AppointmentController extends Controller
             'reference_code' => $refCode,
             'patient_name' => $validated['patient_name'],
             'patient_email' => $validated['patient_email'],
-            'patient_phone' => $validated['patient_phone'],
+            'patient_phone' => \App\Rules\ValidPhoneNumber::normalize($validated['patient_phone']),
             'department_id' => $validated['department_id'],
             'doctor_id' => $validated['doctor_id'] ?? null,
             'appointment_date' => $validated['appointment_date'],

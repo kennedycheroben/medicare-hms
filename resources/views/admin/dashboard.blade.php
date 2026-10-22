@@ -279,35 +279,70 @@
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
                     <h3 class="h5 fw-bold text-dark mb-0">
-                        <i class="bi bi-shield-shaded text-primary me-2"></i> Assigned Role Capabilities
+                        <i class="bi bi-shield-shaded text-primary me-2"></i> Role Profile &amp; Permissions
                     </h3>
-                    <span class="badge bg-secondary-subtle text-secondary">Principle of Least Privilege</span>
+                    <span class="badge bg-secondary-subtle text-secondary">RBAC Least Privilege</span>
                 </div>
                 <div class="card-body p-4">
-                    <p class="small text-muted mb-3">
-                        Your account is provisioned under role <strong>{{ $roleLabel }}</strong>. Below are the verified capabilities granted by the application authorization layer:
-                    </p>
-
                     @php
-                        $capabilities = $currentUser->role instanceof \App\Enums\UserRole 
-                            ? ($currentUser->isSuperAdmin() ? ['All system privileges (Super Administrator)'] : $currentUser->role->capabilities()) 
-                            : [];
+                        $userRole = $currentUser->role instanceof \App\Enums\UserRole ? $currentUser->role : null;
                     @endphp
 
-                    <ul class="list-group list-group-flush mb-0 small">
-                        @forelse($capabilities as $cap)
-                            <li class="list-group-item d-flex align-items-center px-0 py-2 border-light">
-                                <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                <code class="text-dark">{{ $cap }}</code>
-                            </li>
-                        @empty
-                            <li class="list-group-item text-muted px-0">No specific capabilities configured.</li>
-                        @endforelse
-                    </ul>
+                    @if($userRole)
+                        <!-- Purpose -->
+                        <div class="mb-3">
+                            <span class="fw-bold text-dark small d-block mb-1"><i class="bi bi-info-circle text-primary me-1"></i> Role Purpose:</span>
+                            <p class="small text-muted mb-0">{{ $userRole->purpose() }}</p>
+                        </div>
 
-                    <div class="alert alert-info border-0 mt-3 p-3 small mb-0 rounded-3">
-                        <i class="bi bi-info-circle-fill me-1"></i>
-                        Administrative actions, queries, and login/logout events are continuously monitored and logged.
+                        <!-- What staff can view -->
+                        <div class="mb-3">
+                            <span class="fw-bold text-dark small d-block mb-1 text-success"><i class="bi bi-eye text-success me-1"></i> Authorized to View:</span>
+                            <ul class="list-unstyled mb-0 small text-muted ps-1">
+                                @foreach($userRole->canViewDescriptions() as $viewDesc)
+                                    <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> {{ $viewDesc }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+
+                        <!-- What staff can manage -->
+                        <div class="mb-3">
+                            <span class="fw-bold text-dark small d-block mb-1 text-primary"><i class="bi bi-pencil-square text-primary me-1"></i> Authorized to Create &amp; Change:</span>
+                            <ul class="list-unstyled mb-0 small text-muted ps-1">
+                                @foreach($userRole->canManageDescriptions() as $manageDesc)
+                                    <li class="mb-1"><i class="bi bi-arrow-right-short text-primary me-1"></i> {{ $manageDesc }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+
+                        <!-- Important Restrictions -->
+                        <div class="mb-3">
+                            <span class="fw-bold text-dark small d-block mb-1 text-danger"><i class="bi bi-shield-lock text-danger me-1"></i> Operational &amp; Clinical Restrictions:</span>
+                            <ul class="list-unstyled mb-0 small text-muted ps-1">
+                                @foreach($userRole->restrictions() as $restr)
+                                    <li class="mb-1"><i class="bi bi-dash text-danger me-1"></i> {{ $restr }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+
+                        <!-- Granular Capabilities (Plain Language) -->
+                        <div class="mt-3 pt-3 border-top">
+                            <span class="fw-bold text-dark small d-block mb-2">Granted Technical Capabilities:</span>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach($userRole->capabilities() as $cap)
+                                    <span class="badge bg-light text-dark border extra-small" title="{{ $cap }}">
+                                        {{ \App\Enums\UserRole::describeCapability($cap) }}
+                                    </span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <p class="small text-muted mb-0">Role details unavailable.</p>
+                    @endif
+
+                    <div class="alert alert-info border-0 mt-3 p-2.5 extra-small mb-0 rounded-3">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Protected by server-side gate policies. Actions and queries are recorded in the immutable audit trail.
                     </div>
                 </div>
             </div>

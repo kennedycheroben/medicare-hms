@@ -115,6 +115,23 @@ Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
         Route::post('/intake/check-in', [\App\Http\Controllers\Admin\IntakeController::class, 'checkInAppointment'])->name('admin.intake.check-in');
     });
 
+    // 3b. Staff Appointment Management & Workflow
+    Route::get('/appointments', [\App\Http\Controllers\Admin\AppointmentManagementController::class, 'index'])
+        ->middleware('role:super_admin,hospital_director,doctor,nurse,receptionist')
+        ->name('admin.appointments.index');
+
+    Route::get('/appointments/{appointment}', [\App\Http\Controllers\Admin\AppointmentManagementController::class, 'show'])
+        ->middleware('role:super_admin,hospital_director,doctor,nurse,receptionist')
+        ->name('admin.appointments.show');
+
+    Route::middleware('role:super_admin,receptionist')->group(function () {
+        Route::post('/appointments/{appointment}/confirm', [\App\Http\Controllers\Admin\AppointmentManagementController::class, 'confirm'])->name('admin.appointments.confirm');
+        Route::post('/appointments/{appointment}/reschedule', [\App\Http\Controllers\Admin\AppointmentManagementController::class, 'reschedule'])->name('admin.appointments.reschedule');
+        Route::post('/appointments/{appointment}/cancel', [\App\Http\Controllers\Admin\AppointmentManagementController::class, 'cancel'])->name('admin.appointments.cancel');
+        Route::post('/appointments/{appointment}/reconcile', [\App\Http\Controllers\Admin\AppointmentManagementController::class, 'reconcile'])->name('admin.appointments.reconcile');
+        Route::post('/appointments/{appointment}/check-in', [\App\Http\Controllers\Admin\AppointmentManagementController::class, 'checkIn'])->name('admin.appointments.check-in');
+    });
+
     // 4. Nursing Triage Station & Vital Signs
     Route::get('/triage', [\App\Http\Controllers\Admin\TriageController::class, 'index'])
         ->middleware('role:super_admin,nurse,receptionist')

@@ -146,7 +146,7 @@
                                         class="form-control @error('patient_phone') is-invalid @enderror"
                                         id="patient_phone"
                                         name="patient_phone"
-                                        placeholder="e.g. +1 555 123 4567"
+                                        placeholder="e.g. +254 712 345 678 or 0712 345 678"
                                         value="{{ old('patient_phone') }}"
                                         required
                                     >

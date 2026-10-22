@@ -185,7 +185,7 @@
                             </li>
                             <li>
                                 <span class="text-muted d-block">24/7 Department Emergency:</span>
-                                <strong class="text-danger">{{ $doctor->department->emergency_contact ?? '+1 (555) 482-7390' }}</strong>
+                                <strong class="text-danger">{{ $doctor->department->emergency_contact ?? config('hospital.emergency_phone') }}</strong>
                             </li>
                         </ul>
                     </div>

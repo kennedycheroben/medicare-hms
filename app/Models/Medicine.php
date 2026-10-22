@@ -45,6 +45,10 @@ class Medicine extends Model
      */
     public function getAvailableStockAttribute(): int
     {
+        if (array_key_exists('available_stock', $this->attributes)) {
+            return (int) ($this->attributes['available_stock'] ?? 0);
+        }
+
         return (int) $this->batches()
             ->where('is_active', true)
             ->where('expiry_date', '>=', today())
@@ -57,6 +61,32 @@ class Medicine extends Model
     public function isLowStock(): bool
     {
         return $this->available_stock <= $this->reorder_level;
+    }
+
+    /**
+     * Scope query to medicines whose eligible non-expired active stock is at or below reorder level.
+     */
+    public function scopeLowStock($query)
+    {
+        $today = today()->toDateString();
+
+        return $query->whereRaw(
+            '(SELECT COALESCE(SUM(quantity_current), 0) FROM medicine_batches WHERE medicine_batches.medicine_id = medicines.id AND medicine_batches.is_active = 1 AND medicine_batches.expiry_date >= ?) <= medicines.reorder_level',
+            [$today]
+        );
+    }
+
+    /**
+     * Generate a unique, server-side collision-safe medicine product code.
+     * Format: MED-XXXXXX
+     */
+    public static function generateUniqueCode(): string
+    {
+        do {
+            $code = 'MED-' . strtoupper(\Illuminate\Support\Str::random(6));
+        } while (static::where('code', $code)->exists());
+
+        return $code;
     }
 
     /**

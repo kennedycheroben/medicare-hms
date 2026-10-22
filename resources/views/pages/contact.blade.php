@@ -125,7 +125,7 @@
                                         class="form-control @error('phone') is-invalid @enderror"
                                         id="phone"
                                         name="phone"
-                                        placeholder="e.g. +1 555 123 4567"
+                                        placeholder="e.g. +254 712 345 678 or 0712 345 678"
                                         value="{{ old('phone') }}"
                                     >
                                     @error('phone')

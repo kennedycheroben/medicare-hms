@@ -25,9 +25,14 @@ class InventoryController extends Controller
         $category = $request->input('category');
         $lowStockOnly = $request->boolean('low_stock');
 
-        $query = Medicine::with(['batches' => function ($q) {
-            $q->where('is_active', true)->orderBy('expiry_date', 'asc');
-        }])->orderBy('brand_name', 'asc');
+        $query = Medicine::query()
+            ->with(['batches' => function ($q) {
+                $q->where('is_active', true)->orderBy('expiry_date', 'asc');
+            }])
+            ->withSum(['batches as available_stock' => function ($q) {
+                $q->where('is_active', true)->where('expiry_date', '>=', today());
+            }], 'quantity_current')
+            ->orderBy('brand_name', 'asc');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -41,12 +46,11 @@ class InventoryController extends Controller
             $query->where('category', $category);
         }
 
-        $medicines = $query->paginate(20)->withQueryString();
-
         if ($lowStockOnly) {
-            // Filter collections in memory or through subquery
-            $lowStockMedicines = $medicines->filter->isLowStock();
+            $query->lowStock();
         }
+
+        $medicines = $query->paginate(20)->withQueryString();
 
         $categories = Medicine::select('category')->distinct()->pluck('category');
 
@@ -60,7 +64,7 @@ class InventoryController extends Controller
     }
 
     /**
-     * Store a new medicine catalogue entry.
+     * Store a new medicine catalogue entry with server-side collision-safe code generation.
      */
     public function storeMedicine(Request $request): RedirectResponse
     {
@@ -72,7 +76,6 @@ class InventoryController extends Controller
         }
 
         $validated = $request->validate([
-            'code' => ['required', 'string', 'max:50', 'unique:medicines,code'],
             'brand_name' => ['required', 'string', 'max:150'],
             'generic_name' => ['required', 'string', 'max:150'],
             'category' => ['required', 'string', 'max:100'],
@@ -82,7 +85,10 @@ class InventoryController extends Controller
             'reorder_level' => ['required', 'integer', 'min:0', 'max:100000'],
         ]);
 
+        $code = Medicine::generateUniqueCode();
+
         $medicine = Medicine::create(array_merge($validated, [
+            'code' => $code,
             'is_active' => true,
         ]));
 

@@ -176,8 +176,9 @@
                 <div class="modal-body p-4">
                     <div class="row g-3 mb-3">
                         <div class="col-md-4">
-                            <label for="code" class="form-label fw-bold small">Item Code <span class="text-danger">*</span></label>
-                            <input type="text" name="code" id="code" class="form-control form-control-sm text-uppercase" placeholder="e.g. MED-AMX-500" required>
+                            <label class="form-label fw-bold small">Item Code <span class="badge bg-secondary-subtle text-secondary ms-1">Auto-Generated</span></label>
+                            <input type="text" class="form-control form-control-sm bg-light text-muted" value="MED-XXXXXX (Server Assigned)" disabled readonly>
+                            <div class="form-text extra-small">Unique product identifier is automatically generated upon saving.</div>
                         </div>
                         <div class="col-md-4">
                             <label for="brand_name" class="form-label fw-bold small">Brand / Trade Name <span class="text-danger">*</span></label>
@@ -195,7 +196,7 @@
                             <input type="text" name="category" id="category" class="form-control form-control-sm" placeholder="e.g. Antibiotics, Analgesics" required>
                         </div>
                         <div class="col-md-4">
-                            <label for="dosage_form" class="form-label fw-bold small">Dosage Form <span class="text-danger">*</span></label>
+                            <label for="dosage_form" class="form-label fw-bold small">Dosage Form (Formulation) <span class="text-danger">*</span></label>
                             <select name="dosage_form" id="dosage_form" class="form-select form-select-sm" required>
                                 <option value="tablet">Tablet</option>
                                 <option value="capsule">Capsule</option>
@@ -208,6 +209,7 @@
                                 <option value="inhaler">Inhaler</option>
                                 <option value="suppository">Suppository</option>
                             </select>
+                            <div class="form-text extra-small text-muted">Clinical formulation/route administered to the patient.</div>
                         </div>
                         <div class="col-md-4">
                             <label for="strength" class="form-label fw-bold small">Strength <span class="text-danger">*</span></label>
@@ -217,8 +219,9 @@
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="unit_of_measure" class="form-label fw-bold small">Unit of Measure <span class="text-danger">*</span></label>
+                            <label for="unit_of_measure" class="form-label fw-bold small">Stock / Dispensing Unit <span class="text-danger">*</span></label>
                             <input type="text" name="unit_of_measure" id="unit_of_measure" class="form-control form-control-sm" placeholder="e.g. tablets, capsules, bottles, vials" required>
+                            <div class="form-text extra-small text-muted">Warehouse counting & inventory tracking unit (e.g. tablets, bottles, vials).</div>
                         </div>
                         <div class="col-md-6">
                             <label for="reorder_level" class="form-label fw-bold small">Minimum Reorder Threshold <span class="text-danger">*</span></label>

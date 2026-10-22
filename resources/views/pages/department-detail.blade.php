@@ -133,7 +133,7 @@
                                 <i class="bi bi-shield-exclamation text-danger me-2 fs-5"></i>
                                 <div>
                                     <strong>Emergency Line:</strong>
-                                    <span class="d-block text-danger fw-bold">{{ $department->emergency_contact ?? '+1 (555) 482-7390' }}</span>
+                                    <span class="d-block text-danger fw-bold">{{ $department->emergency_contact ?? config('hospital.emergency_phone') }}</span>
                                 </div>
                             </li>
                         </ul>

@@ -493,4 +493,157 @@ class PharmacyDispensingAndInventoryTest extends TestCase
 
         $this->assertEquals(95, $newBatch->fresh()->quantity_current);
     }
+
+    public function test_inventory_low_stock_filter_executes_at_database_level_and_returns_ok(): void
+    {
+        // 1. Medicine with NO batches (0 stock) - low stock
+        $zeroStockMed = Medicine::create([
+            'code' => 'MED-ZERO-001',
+            'brand_name' => 'ZeroStock Brand',
+            'generic_name' => 'ZeroStock Generic',
+            'category' => 'Antibiotics',
+            'dosage_form' => 'tablet',
+            'strength' => '250mg',
+            'unit_of_measure' => 'tablets',
+            'reorder_level' => 20,
+            'is_active' => true,
+        ]);
+
+        // 2. Medicine with only EXPIRED batch (eligible stock = 0) - low stock
+        $expiredMed = Medicine::create([
+            'code' => 'MED-EXP-002',
+            'brand_name' => 'ExpiredMed Brand',
+            'generic_name' => 'ExpiredMed Generic',
+            'category' => 'Cardiology',
+            'dosage_form' => 'tablet',
+            'strength' => '10mg',
+            'unit_of_measure' => 'tablets',
+            'reorder_level' => 15,
+            'is_active' => true,
+        ]);
+        MedicineBatch::create([
+            'medicine_id' => $expiredMed->id,
+            'batch_number' => 'BTH-OLD-001',
+            'expiry_date' => now()->subMonth()->format('Y-m-d'),
+            'quantity_initial' => 50,
+            'quantity_current' => 50,
+            'is_active' => true,
+        ]);
+
+        // 3. Medicine with only INACTIVE batch (eligible stock = 0) - low stock
+        $inactiveBatchMed = Medicine::create([
+            'code' => 'MED-INA-003',
+            'brand_name' => 'InactiveBatch Brand',
+            'generic_name' => 'InactiveBatch Generic',
+            'category' => 'Dermatology',
+            'dosage_form' => 'cream',
+            'strength' => '1%',
+            'unit_of_measure' => 'tubes',
+            'reorder_level' => 10,
+            'is_active' => true,
+        ]);
+        MedicineBatch::create([
+            'medicine_id' => $inactiveBatchMed->id,
+            'batch_number' => 'BTH-DIS-001',
+            'expiry_date' => now()->addYear()->format('Y-m-d'),
+            'quantity_initial' => 40,
+            'quantity_current' => 40,
+            'is_active' => false, // Inactive
+        ]);
+
+        // 4. Medicine with active stock below threshold (5 <= 10) - low stock
+        $lowStockMed = Medicine::create([
+            'code' => 'MED-LOW-004',
+            'brand_name' => 'LowStock Brand',
+            'generic_name' => 'LowStock Generic',
+            'category' => 'Antibiotics',
+            'dosage_form' => 'capsule',
+            'strength' => '500mg',
+            'unit_of_measure' => 'capsules',
+            'reorder_level' => 10,
+            'is_active' => true,
+        ]);
+        MedicineBatch::create([
+            'medicine_id' => $lowStockMed->id,
+            'batch_number' => 'BTH-LOW-001',
+            'expiry_date' => now()->addYear()->format('Y-m-d'),
+            'quantity_initial' => 5,
+            'quantity_current' => 5,
+            'is_active' => true,
+        ]);
+
+        // 5. Medicine with high ample stock (100 > 10) - NOT low stock
+        $highStockMed = Medicine::create([
+            'code' => 'MED-HIGH-005',
+            'brand_name' => 'HighStock Brand',
+            'generic_name' => 'HighStock Generic',
+            'category' => 'Antibiotics',
+            'dosage_form' => 'syrup',
+            'strength' => '125mg/5ml',
+            'unit_of_measure' => 'bottles',
+            'reorder_level' => 10,
+            'is_active' => true,
+        ]);
+        MedicineBatch::create([
+            'medicine_id' => $highStockMed->id,
+            'batch_number' => 'BTH-HIGH-001',
+            'expiry_date' => now()->addYear()->format('Y-m-d'),
+            'quantity_initial' => 100,
+            'quantity_current' => 100,
+            'is_active' => true,
+        ]);
+
+        // Test the exact original failing URL: /admin/inventory?category=&low_stock=1&search=
+        $response = $this->actingAs($this->pharmacist)
+            ->get('/admin/inventory?category=&low_stock=1&search=');
+
+        $response->assertOk();
+        $response->assertViewHas('medicines');
+        $response->assertSee('ZeroStock Brand');
+        $response->assertSee('ExpiredMed Brand');
+        $response->assertSee('InactiveBatch Brand');
+        $response->assertSee('LowStock Brand');
+        $response->assertDontSee('HighStock Brand');
+
+        // Test combined filter: category=Antibiotics & low_stock=1
+        $combinedResponse = $this->actingAs($this->pharmacist)
+            ->get('/admin/inventory?category=Antibiotics&low_stock=1&search=');
+
+        $combinedResponse->assertOk();
+        $combinedResponse->assertSee('ZeroStock Brand');
+        $combinedResponse->assertSee('LowStock Brand');
+        $combinedResponse->assertDontSee('ExpiredMed Brand'); // Cardiology
+        $combinedResponse->assertDontSee('InactiveBatch Brand'); // Dermatology
+        $combinedResponse->assertDontSee('HighStock Brand'); // Stock is high
+
+        // Test search filter: search=ZeroStock & low_stock=1
+        $searchResponse = $this->actingAs($this->pharmacist)
+            ->get('/admin/inventory?category=&low_stock=1&search=ZeroStock');
+
+        $searchResponse->assertOk();
+        $searchResponse->assertSee('ZeroStock Brand');
+        $searchResponse->assertDontSee('LowStock Brand');
+    }
+
+    public function test_pharmacist_creates_medicine_with_automatic_server_generated_code(): void
+    {
+        $response = $this->actingAs($this->pharmacist)
+            ->post(route('admin.inventory.medicines.store'), [
+                'brand_name' => 'Ciprobay 500',
+                'generic_name' => 'Ciprofloxacin Hydrochloride',
+                'category' => 'Antibiotics',
+                'dosage_form' => 'tablet',
+                'strength' => '500mg',
+                'unit_of_measure' => 'tablets',
+                'reorder_level' => 30,
+            ]);
+
+        $response->assertRedirect(route('admin.inventory.index'));
+        $response->assertSessionHas('status');
+
+        $created = Medicine::where('brand_name', 'Ciprobay 500')->first();
+        $this->assertNotNull($created);
+        $this->assertStringStartsWith('MED-', $created->code);
+        $this->assertMatchesRegularExpression('/^MED-[A-Z0-9]{6}$/', $created->code);
+    }
 }

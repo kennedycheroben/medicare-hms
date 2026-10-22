@@ -238,6 +238,10 @@
                 @endif
 
                 @if($isPatientViewer)
+                    <a href="{{ route('admin.appointments.index') }}" class="nav-link {{ request()->routeIs('admin.appointments.*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar2-check"></i>
+                        <span>Appointments</span>
+                    </a>
                     <a href="{{ route('admin.patients.index') }}" class="nav-link {{ request()->routeIs('admin.patients.*') ? 'active' : '' }}">
                         <i class="bi bi-person-vcard"></i>
                         <span>Patient Directory (PMI)</span>
@@ -250,7 +254,7 @@
                 @if($isTriage)
                     <a href="{{ route('admin.triage.index') }}" class="nav-link {{ request()->routeIs('admin.triage.*') ? 'active' : '' }}">
                         <i class="bi bi-clipboard2-pulse"></i>
-                        <span>Triage & Vitals</span>
+                        <span>Initial Assessment & Vital Signs</span>
                     </a>
                 @endif
 

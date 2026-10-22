@@ -145,7 +145,7 @@
                             <i class="bi bi-headset text-primary fs-4 me-3"></i>
                             <div>
                                 <strong>Need Portal Technical Support?</strong>
-                                <span class="d-block">Call Help Desk: +1 (555) 482-7310 (Mon–Fri, 8 AM–5 PM)</span>
+                                <span class="d-block">Call Help Desk: {{ config('hospital.phone') }} ({{ config('hospital.opd_hours') }})</span>
                             </div>
                         </div>
                     </div>

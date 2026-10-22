@@ -1,13 +1,13 @@
 @extends('layouts.admin')
 
-@section('title', 'Nursing Triage Queue')
+@section('title', 'Initial Assessment & Vital Signs')
 
 @section('content')
 <div class="container-fluid p-0">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div>
-            <h1 class="h3 fw-bold text-dark mb-1">Nursing Triage & Clinical Prioritization</h1>
-            <p class="text-muted small mb-0">Record patient vital signs, evaluate clinical acuity, and direct to appropriate physician consultation queues.</p>
+            <h1 class="h3 fw-bold text-dark mb-1">Initial Assessment & Vital Signs</h1>
+            <p class="text-muted small mb-0">Clinical triage process: record patient vital signs, evaluate acuity classification, and direct to appropriate physician consultation queues.</p>
         </div>
         <div class="alert alert-light border small text-muted mb-0 py-2 px-3">
             <i class="bi bi-shield-check text-success me-1"></i> Protocol: Standard 5-Tier Emergency Severity & Triage Index
