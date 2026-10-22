@@ -301,6 +301,11 @@
                 @endif
 
                 @if($isDirector)
+                    <a href="{{ route('admin.doctors.index') }}" class="nav-link {{ request()->routeIs('admin.doctors.*') ? 'active' : '' }}">
+                        <i class="bi bi-person-badge"></i>
+                        <span>Physician Directory</span>
+                    </a>
+
                     <a href="{{ route('admin.reports.index') }}" class="nav-link {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
                         <i class="bi bi-bar-chart-line"></i>
                         <span>Executive Reports</span>

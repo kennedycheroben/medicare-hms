@@ -36,8 +36,11 @@ Route::get('/departments/{slug}', [PageController::class, 'departmentDetail'])->
 // 5. Doctor Directory
 Route::get('/doctors', [PageController::class, 'doctors'])->name('doctors');
 
-// 6. Doctor Profile
+// 6. Doctor Profile & Verified Patient Review Submission
 Route::get('/doctors/{id}', [PageController::class, 'doctorProfile'])->name('doctors.show');
+Route::post('/doctors/{doctor}/reviews', [\App\Http\Controllers\DoctorReviewSubmissionController::class, 'store'])
+    ->middleware('throttle:6,1')
+    ->name('doctors.reviews.store');
 
 // 7. Appointment Booking & Submission
 Route::get('/appointments/book', [AppointmentController::class, 'create'])->name('appointments.create');
@@ -212,5 +215,18 @@ Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
     Route::get('/audit-logs', [\App\Http\Controllers\Admin\ModuleController::class, 'auditLogs'])
         ->middleware('role:super_admin')
         ->name('admin.audit.index');
+
+    // 8. Doctor Profile Verification & Review Moderation (SuperAdmin & Hospital Director)
+    Route::middleware('role:super_admin,hospital_director')->group(function () {
+        Route::get('/doctors-directory', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'index'])->name('admin.doctors.index');
+        Route::get('/doctors-directory/{doctor}/edit', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'edit'])->name('admin.doctors.edit');
+        Route::put('/doctors-directory/{doctor}', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'update'])->name('admin.doctors.update');
+        Route::post('/doctors-directory/{doctor}/publish', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'publish'])->name('admin.doctors.publish');
+        Route::post('/doctors-directory/{doctor}/unpublish', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'unpublish'])->name('admin.doctors.unpublish');
+
+        Route::get('/doctor-reviews', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'reviews'])->name('admin.doctors.reviews');
+        Route::post('/doctor-reviews/{review}/approve', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'approveReview'])->name('admin.doctors.reviews.approve');
+        Route::post('/doctor-reviews/{review}/reject', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'rejectReview'])->name('admin.doctors.reviews.reject');
+    });
 });
 

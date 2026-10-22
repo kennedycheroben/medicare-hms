@@ -43,7 +43,7 @@ class PageController extends Controller
     {
         $departments = Department::where('is_active', true)->orderBy('name')->get();
 
-        $query = Doctor::with('department')->where('is_available', true);
+        $query = Doctor::with('department')->published();
 
         if ($request->filled('department')) {
             $query->whereHas('department', function ($q) use ($request) {
@@ -67,8 +67,16 @@ class PageController extends Controller
 
     public function doctorProfile(int $id)
     {
-        $doctor = Doctor::with('department')->findOrFail($id);
+        $doctor = Doctor::with([
+            'department',
+            'approvedReviews' => function ($q) {
+                $q->latest()->take(10);
+            },
+            'approvedReviews.patient',
+        ])->published()->findOrFail($id);
+
         $relatedDoctors = Doctor::where('department_id', $doctor->department_id)
+            ->published()
             ->where('id', '!=', $doctor->id)
             ->take(3)
             ->get();
