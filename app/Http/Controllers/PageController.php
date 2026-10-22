@@ -97,7 +97,17 @@ class PageController extends Controller
 
     public function news()
     {
-        return view('pages.news');
+        $articles = \App\Models\Article::published()->latest('published_at')->paginate(9);
+
+        return view('pages.news', compact('articles'));
+    }
+
+    public function newsShow(string $slug)
+    {
+        $article = \App\Models\Article::published()->where('slug', $slug)->firstOrFail();
+        $related = \App\Models\Article::published()->where('id', '!=', $article->id)->latest('published_at')->take(3)->get();
+
+        return view('pages.news-show', ['article' => $article, 'related' => $related, 'isPreview' => false]);
     }
 
     public function portalLogin()

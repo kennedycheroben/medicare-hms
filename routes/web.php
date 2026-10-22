@@ -55,6 +55,7 @@ Route::get('/services', [PageController::class, 'services'])->name('services');
 
 // 10. News, Announcements & Health Advisories
 Route::get('/news', [PageController::class, 'news'])->name('news');
+Route::get('/news/{slug}', [PageController::class, 'newsShow'])->name('news.show');
 
 // 11. Contact & Enquiries
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
@@ -227,6 +228,19 @@ Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
         Route::get('/doctor-reviews', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'reviews'])->name('admin.doctors.reviews');
         Route::post('/doctor-reviews/{review}/approve', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'approveReview'])->name('admin.doctors.reviews.approve');
         Route::post('/doctor-reviews/{review}/reject', [\App\Http\Controllers\Admin\DoctorManagementController::class, 'rejectReview'])->name('admin.doctors.reviews.reject');
+    });
+
+    // 9. News CMS (draft/edit/preview; publish & unpublish additionally enforced in controller)
+    Route::middleware('role:super_admin,hospital_director')->prefix('news')->group(function () {
+        $c = \App\Http\Controllers\Admin\ArticleController::class;
+        Route::get('/', [$c, 'index'])->name('admin.articles.index');
+        Route::get('/create', [$c, 'create'])->name('admin.articles.create');
+        Route::post('/', [$c, 'store'])->name('admin.articles.store');
+        Route::get('/{article}/edit', [$c, 'edit'])->name('admin.articles.edit');
+        Route::put('/{article}', [$c, 'update'])->name('admin.articles.update');
+        Route::get('/{article}/preview', [$c, 'preview'])->name('admin.articles.preview');
+        Route::post('/{article}/publish', [$c, 'publish'])->name('admin.articles.publish');
+        Route::post('/{article}/unpublish', [$c, 'unpublish'])->name('admin.articles.unpublish');
     });
 });
 

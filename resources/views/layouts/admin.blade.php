@@ -306,6 +306,11 @@
                         <span>Physician Directory</span>
                     </a>
 
+                    <a href="{{ route('admin.articles.index') }}" class="nav-link {{ request()->routeIs('admin.articles.*') ? 'active' : '' }}">
+                        <i class="bi bi-newspaper"></i>
+                        <span>News &amp; Announcements</span>
+                    </a>
+
                     <a href="{{ route('admin.reports.index') }}" class="nav-link {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
                         <i class="bi bi-bar-chart-line"></i>
                         <span>Executive Reports</span>
