@@ -174,14 +174,14 @@ class PharmacyDispensingAndInventoryTest extends TestCase
             ->assertOk()
             ->assertSee('Pharmacy Dispensary Queue');
 
-        Auth::guard('web')->forgetUser();
+        Auth::guard('web')->logout();
 
         // Doctor denied
         $this->actingAs($this->doctorUser)
             ->get(route('admin.pharmacy.index'))
             ->assertForbidden();
 
-        Auth::guard('web')->forgetUser();
+        Auth::guard('web')->logout();
 
         // Receptionist denied
         $this->actingAs($this->receptionist)

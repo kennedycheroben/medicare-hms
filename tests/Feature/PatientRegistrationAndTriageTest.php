@@ -84,7 +84,7 @@ class PatientRegistrationAndTriageTest extends TestCase
         $responseDoctor = $this->actingAs($this->doctorUser)->get('/admin/patients');
         $responseDoctor->assertStatus(200);
 
-        \Illuminate\Support\Facades\Auth::guard('web')->forgetUser();
+        \Illuminate\Support\Facades\Auth::guard('web')->logout();
         $responseGuest = $this->get('/admin/patients');
         $responseGuest->assertRedirect('/admin/login');
     }

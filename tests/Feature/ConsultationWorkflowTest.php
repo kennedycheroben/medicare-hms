@@ -140,21 +140,21 @@ class ConsultationWorkflowTest extends TestCase
             ->assertSee('Doctor Consultation Queue')
             ->assertSee('Samuel Kiptoo');
 
-        Auth::guard('web')->forgetUser();
+        Auth::guard('web')->logout();
 
         // Nurse denied
         $this->actingAs($this->nurse)
             ->get(route('admin.consultations.index'))
             ->assertForbidden();
 
-        Auth::guard('web')->forgetUser();
+        Auth::guard('web')->logout();
 
         // Receptionist denied
         $this->actingAs($this->receptionist)
             ->get(route('admin.consultations.index'))
             ->assertForbidden();
 
-        Auth::guard('web')->forgetUser();
+        Auth::guard('web')->logout();
 
         // SuperAdmin denied directly to preserve clinical confidentiality
         $this->actingAs($this->superAdmin)
@@ -597,7 +597,7 @@ class ConsultationWorkflowTest extends TestCase
         // Dr. Jane Smith MUST NOT see Dr. Mark Davis's assigned visit
         $response1->assertDontSee($visit2->visit_number);
 
-        Auth::guard('web')->forgetUser();
+        Auth::guard('web')->logout();
 
         // Dr. Mark Davis views his queue
         $response2 = $this->actingAs($this->doctorUser2)
@@ -637,7 +637,7 @@ class ConsultationWorkflowTest extends TestCase
         $this->assertNotNull($consultation);
         $this->assertEquals($this->doctorUser1->id, $consultation->clinician_id);
 
-        Auth::guard('web')->forgetUser();
+        Auth::guard('web')->logout();
 
         // Dr. Mark Davis attempts to take over and start this same in-progress visit
         $this->actingAs($this->doctorUser2)

@@ -306,14 +306,14 @@ class PrescriptionWorkflowTest extends TestCase
             ->get(route('admin.prescriptions.show', $prescription->id))
             ->assertForbidden();
 
-        Auth::guard('web')->forgetUser();
+        Auth::guard('web')->logout();
 
         // Doctor allowed
         $this->actingAs($this->doctorUser)
             ->get(route('admin.prescriptions.show', $prescription->id))
             ->assertOk();
 
-        Auth::guard('web')->forgetUser();
+        Auth::guard('web')->logout();
 
         // Pharmacist allowed
         $this->actingAs($this->pharmacist)
