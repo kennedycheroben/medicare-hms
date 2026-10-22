@@ -16,6 +16,12 @@ class StaffUserSeeder extends Seeder
      */
     public function run(): void
     {
+        if (app()->isProduction()) {
+            $this->command?->warn('StaffUserSeeder skipped: Demonstration staff credentials cannot be seeded in production.');
+
+            return;
+        }
+
         $defaultPassword = 'Password@Medicare2026!';
 
         $firstDepartment = Department::first();

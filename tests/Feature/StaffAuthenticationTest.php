@@ -359,4 +359,16 @@ class StaffAuthenticationTest extends TestCase
             'outcome' => 'success',
         ]);
     }
+
+    public function test_staff_user_seeder_is_blocked_in_production(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+
+        (new \Database\Seeders\StaffUserSeeder())->run();
+
+        $this->assertDatabaseMissing('users', [
+            'email' => 'admin@medicare.local',
+        ]);
+    }
 }
+
