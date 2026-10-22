@@ -22,7 +22,8 @@ class StaffUserSeeder extends Seeder
             return;
         }
 
-        $defaultPassword = 'Password@Medicare2026!';
+        $envPassword = env('DEMO_STAFF_PASSWORD');
+        $defaultPassword = $envPassword ?: 'Password@Medicare2026!';
 
         $firstDepartment = Department::first();
         $firstDoctor = Doctor::first();
@@ -31,7 +32,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Dr. Eleanor Vance (Super Admin)',
                 'email' => 'admin@medicare.local',
-                'password' => 'Admin@Medicare2026!',
+                'password' => $envPassword ?: 'Admin@Medicare2026!',
                 'role' => UserRole::SUPER_ADMIN,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -39,7 +40,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Dr. Arthur Pendelton',
                 'email' => 'director@medicare.local',
-                'password' => 'Director@Medicare2026!',
+                'password' => $envPassword ?: 'Director@Medicare2026!',
                 'role' => UserRole::HOSPITAL_DIRECTOR,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -47,7 +48,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Dr. Sarah Mwangi',
                 'email' => 'doctor@medicare.local',
-                'password' => 'Doctor@Medicare2026!',
+                'password' => $envPassword ?: 'Doctor@Medicare2026!',
                 'role' => UserRole::DOCTOR,
                 'is_active' => true,
                 'department_id' => $firstDoctor?->department_id ?? $firstDepartment?->id,
@@ -56,7 +57,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Nurse Mary Wanjiku',
                 'email' => 'nurse@medicare.local',
-                'password' => 'Nurse@Medicare2026!',
+                'password' => $envPassword ?: 'Nurse@Medicare2026!',
                 'role' => UserRole::NURSE,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -64,7 +65,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Pharm. David Kipchoge',
                 'email' => 'pharmacist@medicare.local',
-                'password' => 'Pharmacist@Medicare2026!',
+                'password' => $envPassword ?: 'Pharmacist@Medicare2026!',
                 'role' => UserRole::PHARMACIST,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -72,7 +73,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Tech. Kevin Otieno',
                 'email' => 'lab@medicare.local',
-                'password' => 'Lab@Medicare2026!',
+                'password' => $envPassword ?: 'Lab@Medicare2026!',
                 'role' => UserRole::LAB_TECHNICIAN,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -80,7 +81,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Faith Chebet (Cashier)',
                 'email' => 'cashier@medicare.local',
-                'password' => 'Cashier@Medicare2026!',
+                'password' => $envPassword ?: 'Cashier@Medicare2026!',
                 'role' => UserRole::CASHIER,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -88,7 +89,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Brian Mutua (Reception Desk)',
                 'email' => 'receptionist@medicare.local',
-                'password' => 'Receptionist@Medicare2026!',
+                'password' => $envPassword ?: 'Receptionist@Medicare2026!',
                 'role' => UserRole::RECEPTIONIST,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -96,7 +97,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Disabled Staff Member',
                 'email' => 'inactive@medicare.local',
-                'password' => 'Inactive@Medicare2026!',
+                'password' => $envPassword ?: 'Inactive@Medicare2026!',
                 'role' => UserRole::RECEPTIONIST,
                 'is_active' => false,
                 'department_id' => $firstDepartment?->id,

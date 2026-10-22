@@ -10,7 +10,12 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             HospitalDataSeeder::class,
-            StaffUserSeeder::class,
         ]);
+
+        if (! app()->isProduction()) {
+            $this->call([
+                StaffUserSeeder::class,
+            ]);
+        }
     }
 }

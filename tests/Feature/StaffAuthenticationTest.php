@@ -366,9 +366,77 @@ class StaffAuthenticationTest extends TestCase
 
         (new \Database\Seeders\StaffUserSeeder())->run();
 
-        $this->assertDatabaseMissing('users', [
-            'email' => 'admin@medicare.local',
-        ]);
+        $this->assertEquals(0, User::where('email', 'like', '%@medicare.local')->count());
+
+        $demoEmails = [
+            'admin@medicare.local',
+            'director@medicare.local',
+            'doctor@medicare.local',
+            'nurse@medicare.local',
+            'pharmacist@medicare.local',
+            'lab@medicare.local',
+            'cashier@medicare.local',
+            'receptionist@medicare.local',
+            'inactive@medicare.local',
+        ];
+
+        foreach ($demoEmails as $email) {
+            $this->assertDatabaseMissing('users', ['email' => $email]);
+        }
+    }
+
+    public function test_database_seeder_excludes_staff_users_in_production_while_preserving_structural_data(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+
+        (new \Database\Seeders\DatabaseSeeder())->run();
+
+        // Structural reference data is populated
+        $this->assertGreaterThan(0, Department::count());
+
+        // Zero demo staff accounts are seeded
+        $this->assertEquals(0, User::where('email', 'like', '%@medicare.local')->count());
+    }
+
+    public function test_staff_user_seeder_populates_all_roles_with_hashed_passwords_in_local_or_testing(): void
+    {
+        (new \Database\Seeders\StaffUserSeeder())->run();
+
+        $this->assertEquals(9, User::where('email', 'like', '%@medicare.local')->count());
+
+        $superAdmin = User::where('email', 'admin@medicare.local')->first();
+        $this->assertNotNull($superAdmin);
+        $this->assertEquals(UserRole::SUPER_ADMIN, $superAdmin->role);
+        $this->assertTrue($superAdmin->isActive());
+        $this->assertTrue(Hash::check('Admin@Medicare2026!', $superAdmin->password));
+
+        $doctor = User::where('email', 'doctor@medicare.local')->first();
+        $this->assertNotNull($doctor);
+        $this->assertEquals(UserRole::DOCTOR, $doctor->role);
+        $this->assertTrue(Hash::check('Doctor@Medicare2026!', $doctor->password));
+
+        $inactive = User::where('email', 'inactive@medicare.local')->first();
+        $this->assertNotNull($inactive);
+        $this->assertFalse($inactive->isActive());
+    }
+
+    public function test_staff_user_seeder_respects_custom_environment_password_override(): void
+    {
+        putenv('DEMO_STAFF_PASSWORD=CustomStrongSeedPass2026!');
+
+        try {
+            (new \Database\Seeders\StaffUserSeeder())->run();
+
+            $admin = User::where('email', 'admin@medicare.local')->first();
+            $this->assertNotNull($admin);
+            $this->assertTrue(Hash::check('CustomStrongSeedPass2026!', $admin->password));
+
+            $nurse = User::where('email', 'nurse@medicare.local')->first();
+            $this->assertNotNull($nurse);
+            $this->assertTrue(Hash::check('CustomStrongSeedPass2026!', $nurse->password));
+        } finally {
+            putenv('DEMO_STAFF_PASSWORD');
+        }
     }
 }
 
