@@ -7,7 +7,6 @@ use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class StaffUserSeeder extends Seeder
 {
@@ -23,7 +22,7 @@ class StaffUserSeeder extends Seeder
         }
 
         $envPassword = env('DEMO_STAFF_PASSWORD');
-        $defaultPassword = $envPassword ?: 'Password@Medicare2026!';
+        $demoPasswordOverride = is_string($envPassword) && trim($envPassword) !== '' ? trim($envPassword) : null;
 
         $firstDepartment = Department::first();
         $firstDoctor = Doctor::first();
@@ -32,7 +31,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Dr. Eleanor Vance (Super Admin)',
                 'email' => 'admin@medicare.local',
-                'password' => $envPassword ?: 'Admin@Medicare2026!',
+                'password' => $demoPasswordOverride ?: 'Admin@Medicare2026!',
                 'role' => UserRole::SUPER_ADMIN,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -40,7 +39,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Dr. Arthur Pendelton',
                 'email' => 'director@medicare.local',
-                'password' => $envPassword ?: 'Director@Medicare2026!',
+                'password' => $demoPasswordOverride ?: 'Director@Medicare2026!',
                 'role' => UserRole::HOSPITAL_DIRECTOR,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -48,7 +47,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Dr. Sarah Mwangi',
                 'email' => 'doctor@medicare.local',
-                'password' => $envPassword ?: 'Doctor@Medicare2026!',
+                'password' => $demoPasswordOverride ?: 'Doctor@Medicare2026!',
                 'role' => UserRole::DOCTOR,
                 'is_active' => true,
                 'department_id' => $firstDoctor?->department_id ?? $firstDepartment?->id,
@@ -57,7 +56,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Nurse Mary Wanjiku',
                 'email' => 'nurse@medicare.local',
-                'password' => $envPassword ?: 'Nurse@Medicare2026!',
+                'password' => $demoPasswordOverride ?: 'Nurse@Medicare2026!',
                 'role' => UserRole::NURSE,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -65,7 +64,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Pharm. David Kipchoge',
                 'email' => 'pharmacist@medicare.local',
-                'password' => $envPassword ?: 'Pharmacist@Medicare2026!',
+                'password' => $demoPasswordOverride ?: 'Pharmacist@Medicare2026!',
                 'role' => UserRole::PHARMACIST,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -73,7 +72,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Tech. Kevin Otieno',
                 'email' => 'lab@medicare.local',
-                'password' => $envPassword ?: 'Lab@Medicare2026!',
+                'password' => $demoPasswordOverride ?: 'Lab@Medicare2026!',
                 'role' => UserRole::LAB_TECHNICIAN,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -81,7 +80,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Faith Chebet (Cashier)',
                 'email' => 'cashier@medicare.local',
-                'password' => $envPassword ?: 'Cashier@Medicare2026!',
+                'password' => $demoPasswordOverride ?: 'Cashier@Medicare2026!',
                 'role' => UserRole::CASHIER,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -89,7 +88,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Brian Mutua (Reception Desk)',
                 'email' => 'receptionist@medicare.local',
-                'password' => $envPassword ?: 'Receptionist@Medicare2026!',
+                'password' => $demoPasswordOverride ?: 'Receptionist@Medicare2026!',
                 'role' => UserRole::RECEPTIONIST,
                 'is_active' => true,
                 'department_id' => $firstDepartment?->id,
@@ -97,7 +96,7 @@ class StaffUserSeeder extends Seeder
             [
                 'name' => 'Disabled Staff Member',
                 'email' => 'inactive@medicare.local',
-                'password' => $envPassword ?: 'Inactive@Medicare2026!',
+                'password' => $demoPasswordOverride ?: 'Inactive@Medicare2026!',
                 'role' => UserRole::RECEPTIONIST,
                 'is_active' => false,
                 'department_id' => $firstDepartment?->id,
