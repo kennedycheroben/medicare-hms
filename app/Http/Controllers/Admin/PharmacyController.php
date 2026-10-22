@@ -99,8 +99,11 @@ class PharmacyController extends Controller
      * Concurrency-safe, transactional dispensing of a prescription item.
      * Enforces FEFO batch allocation, negative stock prevention, and idempotency.
      */
-    public function dispense(Request $request, PrescriptionItem $item): RedirectResponse
-    {
+    public function dispense(
+        Request $request,
+        PrescriptionItem $item,
+        \App\Services\InventoryService $inventoryService
+    ): RedirectResponse {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
@@ -114,145 +117,13 @@ class PharmacyController extends Controller
             'pharmacist_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $quantityToDispense = (int) $validated['quantity_to_dispense'];
-        $idempotencyKey = $validated['idempotency_key'];
-
-        // Execute all state validation, batch locks, inventory deduction, and dispensing records in an ACID transaction
-        $result = DB::transaction(function () use ($item, $quantityToDispense, $idempotencyKey, $validated, $user) {
-            // Check for previous execution with the same idempotency key
-            if (Dispensing::where('idempotency_key', $idempotencyKey)->exists()) {
-                return [
-                    'success' => true,
-                    'message' => 'Duplicate submission detected: this dispensing operation was already processed.',
-                ];
-            }
-
-            // Lock the item and parent prescription row-level to prevent concurrent race conditions
-            /** @var PrescriptionItem $lockedItem */
-            $lockedItem = PrescriptionItem::where('id', $item->id)->lockForUpdate()->firstOrFail();
-            /** @var Prescription $prescription */
-            $prescription = Prescription::where('id', $lockedItem->prescription_id)->lockForUpdate()->firstOrFail();
-
-            if (! in_array($prescription->status, ['finalized', 'partially_dispensed'], true)) {
-                return [
-                    'success' => false,
-                    'error' => "Prescription #{$prescription->prescription_number} is in '{$prescription->status}' status and cannot be dispensed.",
-                ];
-            }
-
-            if (in_array($lockedItem->dispense_status, ['dispensed', 'cancelled'], true)) {
-                return [
-                    'success' => false,
-                    'error' => "Medication line item is already {$lockedItem->dispense_status}.",
-                ];
-            }
-
-            $remainingQuantity = $lockedItem->remaining_quantity;
-            if ($quantityToDispense > $remainingQuantity) {
-                return [
-                    'success' => false,
-                    'error' => "Cannot dispense {$quantityToDispense} units. Outstanding prescribed quantity is only {$remainingQuantity}.",
-                ];
-            }
-
-            // Lock eligible non-expired active batches for this medicine in FEFO order
-            $batches = MedicineBatch::where('medicine_id', $lockedItem->medicine_id)
-                ->where('is_active', true)
-                ->where('expiry_date', '>=', today())
-                ->where('quantity_current', '>', 0)
-                ->orderBy('expiry_date', 'asc')
-                ->lockForUpdate()
-                ->get();
-
-            $totalAvailableStock = $batches->sum('quantity_current');
-            if ($totalAvailableStock < $quantityToDispense) {
-                return [
-                    'success' => false,
-                    'error' => "Insufficient stock in pharmacy. Available non-expired stock: {$totalAvailableStock}, Requested: {$quantityToDispense}.",
-                ];
-            }
-
-            // Deduct stock across batches according to FEFO
-            $remainingNeeded = $quantityToDispense;
-
-            foreach ($batches as $batch) {
-                if ($remainingNeeded <= 0) {
-                    break;
-                }
-
-                $takeFromBatch = min($batch->quantity_current, $remainingNeeded);
-                $qtyBefore = $batch->quantity_current;
-
-                // Decrement batch stock
-                $batch->decrement('quantity_current', $takeFromBatch);
-                $qtyAfter = $qtyBefore - $takeFromBatch;
-
-                // Create individual dispensing audit record
-                $dispensing = Dispensing::create([
-                    'dispensation_number' => Dispensing::generateUniqueDispensationNumber(),
-                    'idempotency_key' => $idempotencyKey,
-                    'prescription_id' => $prescription->id,
-                    'prescription_item_id' => $lockedItem->id,
-                    'medicine_id' => $lockedItem->medicine_id,
-                    'medicine_batch_id' => $batch->id,
-                    'quantity_dispensed' => $takeFromBatch,
-                    'dispensed_by' => $user->id,
-                    'pharmacist_notes' => $validated['pharmacist_notes'] ?? null,
-                    'dispensed_at' => now(),
-                ]);
-
-                // Record immutable stock movement
-                StockMovement::create([
-                    'medicine_id' => $lockedItem->medicine_id,
-                    'medicine_batch_id' => $batch->id,
-                    'movement_type' => 'dispensed',
-                    'quantity' => $takeFromBatch,
-                    'quantity_before' => $qtyBefore,
-                    'quantity_after' => $qtyAfter,
-                    'reference_type' => 'dispensing',
-                    'reference_id' => $dispensing->id,
-                    'performed_by' => $user->id,
-                    'reason' => 'Prescription fulfillment',
-                    'notes' => "Dispensed for Prescription #{$prescription->prescription_number} (Batch {$batch->batch_number})",
-                    'created_at' => now(),
-                ]);
-
-                $remainingNeeded -= $takeFromBatch;
-            }
-
-            // Update item fulfillment state
-            $newQuantityDispensed = $lockedItem->quantity_dispensed + $quantityToDispense;
-            $newStatus = $newQuantityDispensed >= $lockedItem->quantity_prescribed ? 'dispensed' : 'partially_dispensed';
-
-            $lockedItem->update([
-                'quantity_dispensed' => $newQuantityDispensed,
-                'dispense_status' => $newStatus,
-            ]);
-
-            // Refresh parent prescription lifecycle status
-            $prescription->load('items');
-            $prescription->refreshDispenseStatus();
-
-            AuditService::record(
-                action: 'dispensing.recorded',
-                resourceType: 'prescription',
-                resourceId: (string) $prescription->id,
-                details: [
-                    'prescription_number' => $prescription->prescription_number,
-                    'item_id' => $lockedItem->id,
-                    'medicine_id' => $lockedItem->medicine_id,
-                    'quantity_dispensed' => $quantityToDispense,
-                    'new_dispense_status' => $newStatus,
-                ],
-                outcome: 'success',
-                actor: $user
-            );
-
-            return [
-                'success' => true,
-                'message' => "Successfully dispensed {$quantityToDispense} units of {$lockedItem->medication_name}.",
-            ];
-        });
+        $result = $inventoryService->dispensePrescriptionItem(
+            item: $item,
+            quantityToDispense: (int) $validated['quantity_to_dispense'],
+            idempotencyKey: $validated['idempotency_key'],
+            pharmacistNotes: $validated['pharmacist_notes'] ?? null,
+            performer: $user
+        );
 
         if (! $result['success']) {
             return redirect()->back()->withErrors(['dispense' => $result['error']]);

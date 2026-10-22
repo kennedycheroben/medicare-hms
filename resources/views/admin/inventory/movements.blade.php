@@ -33,10 +33,15 @@
                 <div class="col-md-4">
                     <select name="movement_type" class="form-select bg-light">
                         <option value="">-- All Movement Types --</option>
-                        <option value="initial_stock" {{ $movementType === 'initial_stock' ? 'selected' : '' }}>Initial Stock / Batch Receipts</option>
+                        <option value="initial_stock" {{ $movementType === 'initial_stock' ? 'selected' : '' }}>Stock Receipts / Purchases</option>
                         <option value="dispensed" {{ $movementType === 'dispensed' ? 'selected' : '' }}>Prescription Dispensings</option>
-                        <option value="adjustment_add" {{ $movementType === 'adjustment_add' ? 'selected' : '' }}>Stock Additions</option>
-                        <option value="adjustment_deduct" {{ $movementType === 'adjustment_deduct' ? 'selected' : '' }}>Stock Deductions</option>
+                        <option value="otc_sale" {{ $movementType === 'otc_sale' ? 'selected' : '' }}>Over-The-Counter Sales</option>
+                        <option value="internal_use" {{ $movementType === 'internal_use' ? 'selected' : '' }}>Internal Hospital Use</option>
+                        <option value="wastage" {{ $movementType === 'wastage' ? 'selected' : '' }}>Wastage & Damage</option>
+                        <option value="expired" {{ $movementType === 'expired' ? 'selected' : '' }}>Expired Stock Disposal</option>
+                        <option value="return" {{ $movementType === 'return' ? 'selected' : '' }}>Returns / Stock Restorations</option>
+                        <option value="adjustment_add" {{ $movementType === 'adjustment_add' ? 'selected' : '' }}>Stock Additions (+)</option>
+                        <option value="adjustment_deduct" {{ $movementType === 'adjustment_deduct' ? 'selected' : '' }}>Stock Deductions (-)</option>
                     </select>
                 </div>
                 <div class="col-md-3 d-flex gap-2">
@@ -93,8 +98,16 @@
                             <td>
                                 @if($mv->movement_type === 'dispensed')
                                     <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Dispensed</span>
+                                @elseif($mv->movement_type === 'otc_sale')
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">OTC Sale</span>
                                 @elseif($mv->movement_type === 'initial_stock')
                                     <span class="badge bg-success-subtle text-success border border-success-subtle">Stock Receipt</span>
+                                @elseif($mv->movement_type === 'internal_use')
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle">Internal Use</span>
+                                @elseif($mv->movement_type === 'wastage' || $mv->movement_type === 'expired')
+                                    <span class="badge bg-dark-subtle text-dark border border-dark-subtle">{{ ucfirst($mv->movement_type) }}</span>
+                                @elseif($mv->movement_type === 'return')
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Return (+)</span>
                                 @elseif($mv->movement_type === 'adjustment_add')
                                     <span class="badge bg-info-subtle text-info border border-info-subtle">Adjustment (+)</span>
                                 @else

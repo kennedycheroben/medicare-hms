@@ -191,10 +191,14 @@ Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
         Route::get('/inventory/movements', [\App\Http\Controllers\Admin\InventoryController::class, 'movements'])->name('admin.inventory.movements');
     });
 
-    Route::middleware('role:pharmacist')->group(function () {
+    Route::middleware('role:super_admin,pharmacist')->group(function () {
         Route::post('/inventory/medicines', [\App\Http\Controllers\Admin\InventoryController::class, 'storeMedicine'])->name('admin.inventory.medicines.store');
         Route::post('/inventory/medicines/{medicine}/batches', [\App\Http\Controllers\Admin\InventoryController::class, 'storeBatch'])->name('admin.inventory.batches.store');
+        Route::post('/inventory/medicines/{medicine}/otc-sale', [\App\Http\Controllers\Admin\InventoryController::class, 'otcSale'])->name('admin.inventory.medicines.otc-sale');
         Route::post('/inventory/batches/{batch}/adjust', [\App\Http\Controllers\Admin\InventoryController::class, 'adjustStock'])->name('admin.inventory.batches.adjust');
+        Route::post('/inventory/batches/{batch}/internal-use', [\App\Http\Controllers\Admin\InventoryController::class, 'internalUse'])->name('admin.inventory.batches.internal-use');
+        Route::post('/inventory/batches/{batch}/wastage', [\App\Http\Controllers\Admin\InventoryController::class, 'wastage'])->name('admin.inventory.batches.wastage');
+        Route::post('/inventory/batches/{batch}/return', [\App\Http\Controllers\Admin\InventoryController::class, 'returnStock'])->name('admin.inventory.batches.return');
     });
 
     Route::get('/laboratory', [\App\Http\Controllers\Admin\ModuleController::class, 'laboratory'])

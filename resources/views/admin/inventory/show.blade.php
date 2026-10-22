@@ -14,8 +14,11 @@
                 <span class="text-muted small">Catalogue Code: <strong class="font-monospace text-dark">{{ $medicine->code }}</strong> &bull; Category: {{ $medicine->category }}</span>
             </div>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2">
             @if(Auth::user()->hasRole(['pharmacist', 'super_admin']))
+                <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#otcSaleModal">
+                    <i class="bi bi-cart-check me-1"></i> OTC Dispense
+                </button>
                 <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#receiveBatchModal">
                     <i class="bi bi-box-seam me-1"></i> Receive Stock Batch
                 </button>
@@ -138,9 +141,34 @@
                             </td>
                             <td class="pe-4 text-end">
                                 @if(Auth::user()->hasRole(['pharmacist', 'super_admin']))
-                                    <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#adjustModal{{ $batch->id }}">
-                                        <i class="bi bi-sliders"></i> Adjust
-                                    </button>
+                                    <div class="dropdown d-inline-block">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Actions
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                            <li>
+                                                <button class="dropdown-item small" type="button" data-bs-toggle="modal" data-bs-target="#adjustModal{{ $batch->id }}">
+                                                    <i class="bi bi-sliders text-primary me-2"></i> Manual Adjustment
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button class="dropdown-item small" type="button" data-bs-toggle="modal" data-bs-target="#internalUseModal{{ $batch->id }}">
+                                                    <i class="bi bi-hospital text-info me-2"></i> Internal Hospital Issue
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button class="dropdown-item small" type="button" data-bs-toggle="modal" data-bs-target="#wastageModal{{ $batch->id }}">
+                                                    <i class="bi bi-trash text-danger me-2"></i> Wastage / Disposal
+                                                </button>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button class="dropdown-item small" type="button" data-bs-toggle="modal" data-bs-target="#returnModal{{ $batch->id }}">
+                                                    <i class="bi bi-arrow-return-left text-success me-2"></i> Return Stock to Batch
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
 
                                     <!-- Modal: Adjust Stock Batch -->
                                     <div class="modal fade" id="adjustModal{{ $batch->id }}" tabindex="-1" aria-labelledby="adjustModalLabel{{ $batch->id }}" aria-hidden="true">
@@ -164,7 +192,7 @@
                                                             <label class="form-label fw-bold small">Adjustment Direction <span class="text-danger">*</span></label>
                                                             <select name="adjustment_type" class="form-select form-select-sm" required>
                                                                 <option value="adjustment_add">Addition (Reconciliation gain, donation, found stock)</option>
-                                                                <option value="adjustment_deduct">Deduction (Damage, spoilage, expired disposal, loss)</option>
+                                                                <option value="adjustment_deduct">Deduction (Correction, shrinkage, physical variance)</option>
                                                             </select>
                                                         </div>
 
@@ -181,6 +209,123 @@
                                                     <div class="modal-footer border-top">
                                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                                         <button type="submit" class="btn btn-primary">Apply Stock Adjustment</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Modal: Internal Hospital Use -->
+                                    <div class="modal fade" id="internalUseModal{{ $batch->id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content rounded-4 border-0 shadow">
+                                                <form method="POST" action="{{ route('admin.inventory.batches.internal-use', $batch->id) }}">
+                                                    @csrf
+                                                    <div class="modal-header border-bottom">
+                                                        <h5 class="modal-title fw-bold text-dark">
+                                                            <i class="bi bi-hospital text-info me-2"></i> Internal Hospital Issue - Batch #{{ $batch->batch_number }}
+                                                        </h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body p-4 text-start">
+                                                        <div class="mb-3">
+                                                            <div class="small text-muted">Available Stock in Batch:</div>
+                                                            <div class="fw-bold fs-5 text-dark">{{ $batch->quantity_current }} {{ $medicine->unit_of_measure }}</div>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold small">Receiving Department / Ward <span class="text-danger">*</span></label>
+                                                            <input type="text" name="department" class="form-control form-control-sm" placeholder="e.g. Emergency Room, ICU, Maternity Ward" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold small">Quantity to Issue <span class="text-danger">*</span></label>
+                                                            <input type="number" name="quantity" class="form-control form-control-sm" min="1" max="{{ $batch->quantity_current }}" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold small">Clinical / Operational Justification <span class="text-danger">*</span></label>
+                                                            <textarea name="reason" rows="2" class="form-control form-control-sm" placeholder="Purpose of internal department requisitions..." required></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer border-top">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-info text-white">Issue for Internal Use</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Modal: Wastage / Disposal -->
+                                    <div class="modal fade" id="wastageModal{{ $batch->id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content rounded-4 border-0 shadow">
+                                                <form method="POST" action="{{ route('admin.inventory.batches.wastage', $batch->id) }}">
+                                                    @csrf
+                                                    <div class="modal-header border-bottom">
+                                                        <h5 class="modal-title fw-bold text-dark">
+                                                            <i class="bi bi-trash text-danger me-2"></i> Log Wastage / Disposal - Batch #{{ $batch->batch_number }}
+                                                        </h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body p-4 text-start">
+                                                        <div class="mb-3">
+                                                            <div class="small text-muted">Available Stock in Batch:</div>
+                                                            <div class="fw-bold fs-5 text-dark">{{ $batch->quantity_current }} {{ $medicine->unit_of_measure }}</div>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold small">Quantity to Write Off <span class="text-danger">*</span></label>
+                                                            <input type="number" name="quantity" class="form-control form-control-sm" min="1" max="{{ $batch->quantity_current }}" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold small">Reason for Disposal / Wastage <span class="text-danger">*</span></label>
+                                                            <textarea name="reason" rows="2" class="form-control form-control-sm" placeholder="Broken ampoule, cold-chain excursion, expired stock disposal..." required></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer border-top">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-danger">Confirm Disposal / Write-Off</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Modal: Return Stock -->
+                                    <div class="modal fade" id="returnModal{{ $batch->id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content rounded-4 border-0 shadow">
+                                                <form method="POST" action="{{ route('admin.inventory.batches.return', $batch->id) }}">
+                                                    @csrf
+                                                    <div class="modal-header border-bottom">
+                                                        <h5 class="modal-title fw-bold text-dark">
+                                                            <i class="bi bi-arrow-return-left text-success me-2"></i> Return Stock to Batch #{{ $batch->batch_number }}
+                                                        </h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body p-4 text-start">
+                                                        <div class="mb-3">
+                                                            <div class="small text-muted">Current Batch Stock:</div>
+                                                            <div class="fw-bold fs-5 text-dark">{{ $batch->quantity_current }} {{ $medicine->unit_of_measure }}</div>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold small">Quantity to Return <span class="text-danger">*</span></label>
+                                                            <input type="number" name="quantity" class="form-control form-control-sm" min="1" max="10000" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold small">Return Origin / Reference Type</label>
+                                                            <input type="text" name="reference_type" class="form-control form-control-sm" placeholder="e.g. Ward Return, Discharge Reversal, Unopened Return">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold small">Document / Transaction Reference</label>
+                                                            <input type="text" name="reference_id" class="form-control form-control-sm" placeholder="e.g. DISP-0012, REC-8493">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold small">Mandatory Reason for Return <span class="text-danger">*</span></label>
+                                                            <textarea name="reason" rows="2" class="form-control form-control-sm" placeholder="Reason for inventory return..." required></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer border-top">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-success">Restore Stock</button>
                                                     </div>
                                                 </form>
                                             </div>
@@ -300,6 +445,52 @@
                 <div class="modal-footer border-top">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Receive into Warehouse</button>
+                </div>
+            </form>
+        </div>
+</div>
+
+<!-- Modal: Over-the-Counter (OTC) Direct Sale -->
+<div class="modal fade" id="otcSaleModal" tabindex="-1" aria-labelledby="otcSaleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="POST" action="{{ route('admin.inventory.medicines.otc-sale', $medicine->id) }}">
+                @csrf
+                <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-dark" id="otcSaleModalLabel">
+                        <i class="bi bi-cart-check text-primary me-2"></i> Over-the-Counter (OTC) Sale
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 p-2.5 small mb-3 rounded-3">
+                        <i class="bi bi-info-circle me-1"></i> Stock will be automatically allocated from active, non-expired batches according to <strong>FEFO</strong>.
+                    </div>
+                    <div class="mb-3">
+                        <div class="small text-muted">Available Non-Expired Stock:</div>
+                        <div class="fw-bold fs-5 text-primary">{{ number_format($medicine->available_stock) }} {{ $medicine->unit_of_measure }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="otcCustomerName" class="form-label fw-bold small">Customer / Patient Name <span class="text-danger">*</span></label>
+                        <input type="text" name="customer_name" id="otcCustomerName" class="form-control form-control-sm" placeholder="e.g. Walk-in Customer / Mary Wanjiku" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="otcQuantity" class="form-label fw-bold small">Quantity to Sell <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity" id="otcQuantity" class="form-control form-control-sm" min="1" max="{{ $medicine->available_stock }}" placeholder="Number of units" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="otcPaymentRef" class="form-label fw-bold small">Payment Reference (e.g. M-Pesa / Receipt #)</label>
+                        <input type="text" name="payment_reference" id="otcPaymentRef" class="form-control form-control-sm" placeholder="e.g. QA849201KZ or Cash Receipt #102">
+                    </div>
+                    <div class="mb-3">
+                        <label for="otcNotes" class="form-label fw-bold small">Pharmacist Notes</label>
+                        <textarea name="notes" id="otcNotes" rows="2" class="form-control form-control-sm" placeholder="Optional clinical or transaction remarks..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" {{ $medicine->available_stock <= 0 ? 'disabled' : '' }}>Complete OTC Sale</button>
                 </div>
             </form>
         </div>

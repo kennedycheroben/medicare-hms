@@ -129,8 +129,11 @@ class InventoryController extends Controller
     /**
      * Receive and log a new stock batch for a specific medicine.
      */
-    public function storeBatch(Request $request, Medicine $medicine): RedirectResponse
-    {
+    public function storeBatch(
+        Request $request,
+        Medicine $medicine,
+        \App\Services\InventoryService $inventoryService
+    ): RedirectResponse {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
@@ -151,50 +154,11 @@ class InventoryController extends Controller
             'unit_dispensing_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $batch = DB::transaction(function () use ($medicine, $validated, $user) {
-            $qty = (int) $validated['quantity_initial'];
-
-            $batch = MedicineBatch::create([
-                'medicine_id' => $medicine->id,
-                'batch_number' => strtoupper(trim($validated['batch_number'])),
-                'expiry_date' => $validated['expiry_date'],
-                'quantity_initial' => $qty,
-                'quantity_current' => $qty,
-                'unit_purchase_cost' => $validated['unit_purchase_cost'] ?? 0.00,
-                'unit_dispensing_price' => $validated['unit_dispensing_price'] ?? 0.00,
-                'is_active' => true,
-            ]);
-
-            StockMovement::create([
-                'medicine_id' => $medicine->id,
-                'medicine_batch_id' => $batch->id,
-                'movement_type' => 'initial_stock',
-                'quantity' => $qty,
-                'quantity_before' => 0,
-                'quantity_after' => $qty,
-                'reference_type' => 'medicine_batch',
-                'reference_id' => $batch->id,
-                'performed_by' => $user->id,
-                'reason' => 'Stock intake',
-                'notes' => "Received new Batch #{$batch->batch_number} (Expires {$batch->expiry_date->format('Y-m-d')})",
-                'created_at' => now(),
-            ]);
-
-            AuditService::record(
-                action: 'inventory.batch_received',
-                resourceType: 'medicine_batch',
-                resourceId: (string) $batch->id,
-                details: [
-                    'medicine_id' => $medicine->id,
-                    'batch_number' => $batch->batch_number,
-                    'quantity' => $qty,
-                ],
-                outcome: 'success',
-                actor: $user
-            );
-
-            return $batch;
-        });
+        $batch = $inventoryService->receiveBatch(
+            medicine: $medicine,
+            data: $validated,
+            performer: $user
+        );
 
         return redirect()->route('admin.inventory.medicines.show', $medicine->id)
             ->with('status', "Batch {$batch->batch_number} with {$batch->quantity_initial} units received successfully.");
@@ -203,8 +167,11 @@ class InventoryController extends Controller
     /**
      * Perform an auditable manual stock adjustment on a medicine batch.
      */
-    public function adjustStock(Request $request, MedicineBatch $batch): RedirectResponse
-    {
+    public function adjustStock(
+        Request $request,
+        MedicineBatch $batch,
+        \App\Services\InventoryService $inventoryService
+    ): RedirectResponse {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
@@ -218,67 +185,164 @@ class InventoryController extends Controller
             'reason' => ['required', 'string', 'min:5', 'max:500'],
         ]);
 
-        $quantity = (int) $validated['quantity'];
-        $type = $validated['adjustment_type'];
-
-        $result = DB::transaction(function () use ($batch, $quantity, $type, $validated, $user) {
-            /** @var MedicineBatch $lockedBatch */
-            $lockedBatch = MedicineBatch::where('id', $batch->id)->lockForUpdate()->firstOrFail();
-
-            if ($type === 'adjustment_deduct' && $quantity > $lockedBatch->quantity_current) {
-                return [
-                    'success' => false,
-                    'error' => "Cannot deduct {$quantity} units. Batch #{$lockedBatch->batch_number} current stock is only {$lockedBatch->quantity_current} units.",
-                ];
-            }
-
-            $qtyBefore = $lockedBatch->quantity_current;
-
-            if ($type === 'adjustment_add') {
-                $lockedBatch->increment('quantity_current', $quantity);
-                $qtyAfter = $qtyBefore + $quantity;
-            } else {
-                $lockedBatch->decrement('quantity_current', $quantity);
-                $qtyAfter = $qtyBefore - $quantity;
-            }
-
-            StockMovement::create([
-                'medicine_id' => $lockedBatch->medicine_id,
-                'medicine_batch_id' => $lockedBatch->id,
-                'movement_type' => $type,
-                'quantity' => $quantity,
-                'quantity_before' => $qtyBefore,
-                'quantity_after' => $qtyAfter,
-                'reference_type' => 'manual_adjustment',
-                'reference_id' => $lockedBatch->id,
-                'performed_by' => $user->id,
-                'reason' => $validated['reason'],
-                'notes' => "Manual adjustment: {$type} of {$quantity} units",
-                'created_at' => now(),
-            ]);
-
-            AuditService::record(
-                action: 'inventory.stock_adjusted',
-                resourceType: 'medicine_batch',
-                resourceId: (string) $lockedBatch->id,
-                details: [
-                    'batch_number' => $lockedBatch->batch_number,
-                    'adjustment_type' => $type,
-                    'quantity' => $quantity,
-                    'reason' => $validated['reason'],
-                ],
-                outcome: 'success',
-                actor: $user
-            );
-
-            return [
-                'success' => true,
-                'message' => "Stock adjustment of {$quantity} units applied to Batch #{$lockedBatch->batch_number}.",
-            ];
-        });
+        $result = $inventoryService->adjustBatch(
+            batch: $batch,
+            type: $validated['adjustment_type'],
+            quantity: (int) $validated['quantity'],
+            reason: $validated['reason'],
+            performer: $user
+        );
 
         if (! $result['success']) {
             return redirect()->back()->withErrors(['adjustment' => $result['error']]);
+        }
+
+        return redirect()->back()->with('status', $result['message']);
+    }
+
+    /**
+     * Process an Over-the-Counter (OTC) sale directly from pharmacy inventory.
+     */
+    public function otcSale(
+        Request $request,
+        Medicine $medicine,
+        \App\Services\InventoryService $inventoryService
+    ): RedirectResponse {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (! $user->hasRole(['pharmacist', 'super_admin'])) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1', 'max:10000'],
+            'customer_name' => ['required', 'string', 'max:150'],
+            'payment_reference' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string', 'max:500'],
+            'idempotency_key' => ['required', 'string', 'max:64'],
+        ]);
+
+        $result = $inventoryService->otcSale(
+            medicine: $medicine,
+            quantity: (int) $validated['quantity'],
+            idempotencyKey: $validated['idempotency_key'],
+            customerName: $validated['customer_name'],
+            paymentReference: $validated['payment_reference'] ?? null,
+            notes: $validated['notes'] ?? null,
+            performer: $user
+        );
+
+        if (! $result['success']) {
+            return redirect()->back()->withErrors(['otc_sale' => $result['error']]);
+        }
+
+        return redirect()->back()->with('status', $result['message']);
+    }
+
+    /**
+     * Issue medication stock for internal hospital use.
+     */
+    public function internalUse(
+        Request $request,
+        MedicineBatch $batch,
+        \App\Services\InventoryService $inventoryService
+    ): RedirectResponse {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (! $user->hasRole(['pharmacist', 'super_admin'])) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1', 'max:10000'],
+            'department' => ['required', 'string', 'max:100'],
+            'reason' => ['required', 'string', 'min:5', 'max:500'],
+        ]);
+
+        $result = $inventoryService->internalUse(
+            batch: $batch,
+            quantity: (int) $validated['quantity'],
+            department: $validated['department'],
+            reason: $validated['reason'],
+            performer: $user
+        );
+
+        if (! $result['success']) {
+            return redirect()->back()->withErrors(['internal_use' => $result['error']]);
+        }
+
+        return redirect()->back()->with('status', $result['message']);
+    }
+
+    /**
+     * Record inventory wastage or disposal of expired/damaged medication.
+     */
+    public function wastage(
+        Request $request,
+        MedicineBatch $batch,
+        \App\Services\InventoryService $inventoryService
+    ): RedirectResponse {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (! $user->hasRole(['pharmacist', 'super_admin'])) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1', 'max:10000'],
+            'reason' => ['required', 'string', 'min:5', 'max:500'],
+        ]);
+
+        $result = $inventoryService->recordWastage(
+            batch: $batch,
+            quantity: (int) $validated['quantity'],
+            reason: $validated['reason'],
+            performer: $user
+        );
+
+        if (! $result['success']) {
+            return redirect()->back()->withErrors(['wastage' => $result['error']]);
+        }
+
+        return redirect()->back()->with('status', $result['message']);
+    }
+
+    /**
+     * Record stock return back into an active non-expired batch.
+     */
+    public function returnStock(
+        Request $request,
+        MedicineBatch $batch,
+        \App\Services\InventoryService $inventoryService
+    ): RedirectResponse {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (! $user->hasRole(['pharmacist', 'super_admin'])) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1', 'max:10000'],
+            'reason' => ['required', 'string', 'min:5', 'max:500'],
+            'reference_type' => ['nullable', 'string', 'max:100'],
+            'reference_id' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $result = $inventoryService->recordReturn(
+            batch: $batch,
+            quantity: (int) $validated['quantity'],
+            reason: $validated['reason'],
+            referenceType: $validated['reference_type'] ?? null,
+            referenceId: $validated['reference_id'] ?? null,
+            performer: $user
+        );
+
+        if (! $result['success']) {
+            return redirect()->back()->withErrors(['return' => $result['error']]);
         }
 
         return redirect()->back()->with('status', $result['message']);
