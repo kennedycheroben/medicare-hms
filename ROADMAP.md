@@ -224,17 +224,19 @@ The public website and back-office administration never duplicate data entities.
 ---
 
 ### Phase 8: Deployment Preparation, Backup Verification & Operational Readiness
-* **Scope**: Production environment configuration, MySQL automated backup and point-in-time recovery verification, cPanel/Truehost deployment automation, production mail delivery, and hospital staff user workbook.
-* **Status**: **In Progress / Deployment Readiness Established**.
+* **Scope**: Production environment configuration, MySQL automated backup and point-in-time recovery verification, cPanel/Truehost deployment automation, release packaging verification, and hospital staff user workbook.
+* **Status**: **Hardened & Verified Locally (Pre-Deployment Operational Readiness Established)**.
 * **Implemented & Verified Deliverables**:
   - [x] Integrated User Workbook & Operational Guide (`/guide`) providing plain-language instructions for patients, receptionists, nurses, doctors, pharmacists, and administrators.
   - [x] Published Terms of Service (`/terms`) with explicit clinical governance and emergency disclaimers.
   - [x] Production asset compilation (`npm run build`) verified clean with zero build warnings.
   - [x] Production environment template (`.env.production.example`) created with hardened session, cookie, and localization settings.
   - [x] Truehost and cPanel production deployment runbook (`DEPLOYMENT_RUNBOOK.md`) established with ordered phase boundaries.
-  - [x] Database backup (`scripts/backup_database.sh`) and restore (`scripts/restore_database.sh`) scripts engineered with `chmod 600` permissions and retention pruning.
+  - [x] Database backup (`scripts/backup_database.sh`) and restore (`scripts/restore_database.sh`) scripts engineered with `chmod 600` permissions, retention pruning, safe database identifier validation (`^[a-zA-Z0-9_]+$`), and mandatory `--confirm` flags.
+  - [x] Automated release packaging script (`scripts/package_release.sh`) with strict security exclusions (excluding `.git`, `.env*`, `node_modules`, `tests`, `phpunit*.xml`) and archive self-verification.
+  - [x] Automated deployment readiness test suite (`tests/Feature/DeploymentReadinessTest.php`) verifying production configuration parity, security hardening flags, route health, and script error safeguards.
   - [x] Backup and restore disaster recovery drill verified in an isolated disposable database environment with 100% schema and record integrity (28 tables verified).
-* **Remaining Acceptance Criteria (Pre-Deployment Checklist)**:
+* **Remaining Acceptance Criteria (Pre-Deployment Checklist & External Release Gates)**:
   - [ ] Production SMTP gateway configuration (e.g., Amazon SES, Postmark, Mailgun) for live patient email activation delivery.
   - [ ] Production symlink verification (`php artisan storage:link`) for uploaded media.
   - [ ] Formal legal sign-off from hospital legal counsel on Privacy Policy and Terms of Service.
@@ -260,16 +262,33 @@ The public website and back-office administration never duplicate data entities.
 | `tests/Feature/NewsCmsTest.php` | 5 | 37 | Passed |
 | `tests/Feature/PatientPortalAuthTest.php` | 10 | 114 | Passed |
 | `tests/Feature/SecurityHardeningAndPenetrationTest.php` | 16 | 203 | Passed |
+| `tests/Feature/DeploymentReadinessTest.php` | 9 | 129 | Passed |
 | `tests/Unit/ExampleTest.php` | 1 | 1 | Passed |
 | `tests/Feature/ExampleTest.php` | 1 | 1 | Passed |
-| **Total Test Suite** | **143** | **1,113** | **100% Pass (0 Failures)** |
+| **Total Test Suite** | **152** | **1,242** | **100% Pass (0 Failures)** |
 
 ---
 
-## 5. Outstanding Production Items & Deployment Readiness
+## 5. Scope Boundaries: Completed System vs. Future Hospital Modules
 
-While core engineering, clinical flows, security controls, and automated tests are 100% verified locally, the following production prerequisites remain before live clinical deployment:
-1. **Production SMTP Mail Gateway**: Configure production mail credentials (`MAIL_MAILER=smtp`) with an authorized delivery service (e.g. Amazon SES, Postmark, Mailgun) for live patient email activation delivery.
-2. **Production Storage Symlink**: Run `php artisan storage:link` on the production server to ensure public access to uploaded news covers.
-3. **Formal Legal Sign-Off**: Hospital legal counsel review of the published Privacy Policy and Terms of Service.
-4. **Physical Hospital Deployment**: Configure hospital department phone extensions and roster credentials in production database seeders.
+### 5.1 Completed Outpatient Clinical & Operational Scope (Release Candidate 1.0)
+The following core hospital operations are fully engineered, secured, and locally verified:
+1. Public clinical portal, doctor directory, departmental routing, online appointment scheduling, and contact inquiries.
+2. Patient Master Index (PMI) with collision-resistant MRN generation and audited duplicate detection.
+3. Front-desk patient intake, walk-in registration, and appointment reconciliation.
+4. Nursing triage station with 5-tier clinical prioritization and comprehensive vital signs recording.
+5. Attending physician consultation workspace with SOAP notes, diagnosis coding, and immutable signing with append-only addenda.
+6. Multi-item electronic prescriptions (e-Rx) and pharmacy dispensary queue with concurrency-safe FEFO batch allocation.
+7. Centralized transactional inventory management (`InventoryService`) with negative stock prevention and movement logging.
+8. Physician directory publication oversight and verified moderated patient reviews.
+9. Database-backed hospital news CMS with draft privacy and publisher authorization.
+10. Multi-guard authenticated patient self-service portal with SHA-256 single-use tokens and isolated sessions.
+11. Defensive security headers middleware with tightened CSP (no `unsafe-eval`, no CDN domains), session revocation, and audit secret redaction.
+12. Truehost cPanel deployment automation, configuration templates, database backup/restore scripts, and release packaging tooling.
+
+### 5.2 Separate Future Hospital Development Scope
+The following modules currently exist as architectural view shells in `/admin/*` and represent distinct development phases for subsequent project milestones:
+1. **Diagnostic Laboratory & Specimen Accessioning** (`/admin/laboratory`): Laboratory order entry from consultation, specimen accessioning barcodes, equipment calibration logging, and pathologist result verification.
+2. **Billing, Invoicing & M-Pesa Integration** (`/admin/billing`): Itemized consultation/pharmacy billing, Daraja API / C2B M-Pesa callback reconciliation, insurance pre-authorization claims, and cashier register closing.
+3. **Executive Reporting & Business Intelligence** (`/admin/reports`): Aggregate departmental clinical census, pharmacy inventory velocity, revenue reconciliation, and physician workload analytics.
+4. **Inpatient Ward & Bed Management**: Ward layout, bed occupancy tracking, admission/discharge/transfer (ADT) workflows, and inpatient medication administration records (eMAR).

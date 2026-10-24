@@ -63,7 +63,7 @@ git status
 
 # Run full automated test suite against isolated test database
 php artisan test
-# Verification Gate: Must report 100% pass (127 tests, 910 assertions, 0 failures)
+# Verification Gate: Must report 100% pass (152 tests, 1,242 assertions, 0 failures)
 ```
 
 ### Step A.2: Compile Production Frontend Assets
@@ -73,19 +73,17 @@ npm run build
 ```
 Verify that `public/build/manifest.json`, `public/build/assets/*.css`, and `public/build/assets/*.js` are created cleanly.
 
-### Step A.3: Prepare Deployment Archive
-Create a clean distribution archive excluding local scratch files, `.git`, `.env`, and test databases:
+### Step A.3: Prepare Deployment Archive Using Verified Packaging Script
+Use the automated, verified packaging script which automatically checks asset compilation, enforces strict exclusions (excluding `.git`, `.env*`, `node_modules`, `tests`, `phpunit*.xml`, and temporary logs), and self-verifies the archive:
 ```bash
-# Create deployment package
-tar --exclude='.git' \
-    --exclude='.env' \
-    --exclude='node_modules' \
-    --exclude='storage/app/backups*' \
-    --exclude='storage/logs/*.log' \
-    --exclude='storage/framework/cache/data/*' \
-    --exclude='storage/framework/sessions/*' \
-    --exclude='storage/framework/views/*' \
-    -czvf medicare-hms-deploy.tar.gz .
+# Generate verified release archive to /tmp or designated output directory
+./scripts/package_release.sh -o /tmp -n medicare-hms-deploy
+
+# Inspect archive contents and verify absence of secrets or development artifacts:
+tar -tzf /tmp/medicare-hms-deploy_*.tar.gz | grep -E '\.env$|\.git|node_modules|tests/' || echo "Clean: No forbidden files found"
+
+# Check SHA256 checksum
+sha256sum /tmp/medicare-hms-deploy_*.tar.gz
 ```
 
 ---

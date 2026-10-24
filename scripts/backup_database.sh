@@ -77,6 +77,11 @@ if [[ -z "${DB_DATABASE}" ]]; then
     exit 1
 fi
 
+if [[ ! "${DB_DATABASE}" =~ ^[a-zA-Z0-9_]+$ ]]; then
+    echo "ERROR: Unsafe database identifier '${DB_DATABASE}'. Database names must only contain alphanumeric characters and underscores." >&2
+    exit 1
+fi
+
 # Detect mysqldump binary
 MYSQLDUMP_BIN="${MYSQLDUMP_BIN:-}"
 if [[ -z "${MYSQLDUMP_BIN}" ]]; then

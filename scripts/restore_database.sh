@@ -64,6 +64,11 @@ if [[ -z "${TARGET_DB}" ]]; then
     exit 1
 fi
 
+if [[ ! "${TARGET_DB}" =~ ^[a-zA-Z0-9_]+$ ]]; then
+    echo "ERROR: Unsafe target database identifier '${TARGET_DB}'. Database names must only contain alphanumeric characters and underscores." >&2
+    exit 1
+fi
+
 if [[ "${CONFIRMED}" != "true" ]]; then
     echo "ERROR: Database restore aborted. You must supply '--confirm' to proceed with database restoration." >&2
     exit 1
