@@ -197,17 +197,20 @@ The public website and back-office administration never duplicate data entities.
 
 ### Phase 8: Deployment Preparation, Backup Verification & Operational Readiness
 * **Scope**: Production environment configuration, MySQL automated backup and point-in-time recovery verification, cPanel/Truehost deployment automation, production mail delivery, and hospital staff user workbook.
-* **Status**: **In Progress / Documentation Established**.
+* **Status**: **In Progress / Deployment Readiness Established**.
 * **Implemented & Verified Deliverables**:
   - [x] Integrated User Workbook & Operational Guide (`/guide`) providing plain-language instructions for patients, receptionists, nurses, doctors, pharmacists, and administrators.
   - [x] Published Terms of Service (`/terms`) with explicit clinical governance and emergency disclaimers.
   - [x] Production asset compilation (`npm run build`) verified clean with zero build warnings.
+  - [x] Production environment template (`.env.production.example`) created with hardened session, cookie, and localization settings.
+  - [x] Truehost and cPanel production deployment runbook (`DEPLOYMENT_RUNBOOK.md`) established with ordered phase boundaries.
+  - [x] Database backup (`scripts/backup_database.sh`) and restore (`scripts/restore_database.sh`) scripts engineered with `chmod 600` permissions and retention pruning.
+  - [x] Backup and restore disaster recovery drill verified in an isolated disposable database environment with 100% schema and record integrity (28 tables verified).
 * **Remaining Acceptance Criteria (Pre-Deployment Checklist)**:
   - [ ] Production SMTP gateway configuration (e.g., Amazon SES, Postmark, Mailgun) for live patient email activation delivery.
   - [ ] Production symlink verification (`php artisan storage:link`) for uploaded media.
-  - [ ] Automated database backup schedule and restore drill on isolated staging environment.
   - [ ] Formal legal sign-off from hospital legal counsel on Privacy Policy and Terms of Service.
-  - [ ] Production deployment runbook executed against Truehost cPanel environment.
+  - [ ] Execution of deployment runbook against Truehost cPanel environment during an authorized maintenance window.
 
 ---
 
