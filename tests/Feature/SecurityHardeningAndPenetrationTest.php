@@ -159,6 +159,8 @@ class SecurityHardeningAndPenetrationTest extends TestCase
             $this->assertStringContainsString("frame-ancestors 'self'", $csp);
             $this->assertStringContainsString("base-uri 'self'", $csp);
             $this->assertStringContainsString("form-action 'self'", $csp);
+            $this->assertStringNotContainsString("'unsafe-eval'", $csp, "CSP must not permit unsafe-eval on route: {$route}");
+            $this->assertStringNotContainsString("cdn.jsdelivr.net", $csp, "CSP must not whitelist unused CDN on route: {$route}");
 
             // Server signature leakage prevention
             $this->assertNull($response->headers->get('X-Powered-By'), "X-Powered-By leaked on route: {$route}");
@@ -462,5 +464,116 @@ class SecurityHardeningAndPenetrationTest extends TestCase
 
         $response->assertRedirect(route('admin.login'));
         $response->assertSessionHasErrors(['email']);
+    }
+
+    public function test_admin_login_is_reachable_unauthenticated_and_redirects_authenticated_staff(): void
+    {
+        // Unauthenticated guest can access staff login form
+        $response = $this->get(route('admin.login'));
+        $response->assertStatus(200);
+
+        // Authenticated staff user is redirected to admin dashboard
+        $authResponse = $this->actingAs($this->superAdmin, 'web')
+            ->get(route('admin.login'));
+        $authResponse->assertRedirect(route('admin.dashboard'));
+    }
+
+    public function test_admin_logout_requires_authenticated_staff_guard(): void
+    {
+        // Unauthenticated logout attempt redirects to admin login
+        $guestResponse = $this->post(route('admin.logout'));
+        $guestResponse->assertRedirect(route('admin.login'));
+
+        // Authenticated staff successfully logs out
+        $authResponse = $this->actingAs($this->doctorUser, 'web')
+            ->post(route('admin.logout'));
+        $authResponse->assertRedirect(route('admin.login'));
+        $this->assertGuest('web');
+    }
+
+    public function test_confidential_draft_consultation_is_inaccessible_to_other_doctors(): void
+    {
+        $secondDoctorProfile = Doctor::skip(1)->first() ?? Doctor::factory()->create();
+        $doctorUser2 = User::create([
+            'name' => 'Dr. Colleague',
+            'email' => 'dr.colleague@medicare.local',
+            'password' => 'SecurePass123!',
+            'role' => UserRole::DOCTOR,
+            'doctor_id' => $secondDoctorProfile->id,
+            'department_id' => $this->department->id,
+            'is_active' => true,
+        ]);
+
+        $draft = Consultation::create([
+            'visit_id' => $this->visit->id,
+            'patient_id' => $this->patient->id,
+            'doctor_id' => $this->doctorProfile->id,
+            'clinician_id' => $this->doctorUser->id,
+            'status' => 'draft',
+            'chief_complaint' => 'Confidential patient discussion in progress',
+            'history_present_illness' => 'Early differential workup',
+            'examination_findings' => 'Vitals pending',
+            'assessment' => 'Unconfirmed assessment',
+            'diagnosis_type' => 'provisional',
+            'primary_diagnosis' => 'Provisional finding',
+            'treatment_plan' => 'Pending investigations',
+        ]);
+
+        // Dr. Colleague cannot view Dr. Sec Lead's draft consultation (403)
+        $this->actingAs($doctorUser2, 'web')
+            ->get(route('admin.consultations.show', $draft))
+            ->assertForbidden();
+
+        // Dr. Colleague cannot tamper with or update Dr. Sec Lead's draft (403)
+        $this->actingAs($doctorUser2, 'web')
+            ->put(route('admin.consultations.update', $draft), [
+                'chief_complaint' => 'Tampered notes',
+            ])
+            ->assertForbidden();
+
+        // Dr. Colleague cannot sign Dr. Sec Lead's draft (403)
+        $this->actingAs($doctorUser2, 'web')
+            ->post(route('admin.consultations.sign', $draft), [
+                'chief_complaint' => 'Forged signature attempt',
+                'history_present_illness' => 'Forged history',
+                'examination_findings' => 'Forged findings',
+                'assessment' => 'Forged assessment',
+                'diagnosis_type' => 'provisional',
+                'primary_diagnosis' => 'Forged diagnosis',
+                'treatment_plan' => 'Forged plan',
+            ])
+            ->assertForbidden();
+
+        // Audit log captures unauthorized draft access
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'consultation.unauthorized_draft_access',
+            'resource_id' => (string) $draft->id,
+        ]);
+    }
+
+    public function test_authenticated_patient_cannot_access_staff_clinical_or_pmi_routes(): void
+    {
+        $patientAccount = PatientAccount::create([
+            'patient_id' => $this->patient->id,
+            'email' => $this->patient->email,
+            'password' => 'SecurePass123!',
+            'activated_at' => now(),
+            'must_change_password' => false,
+        ]);
+
+        // Patient attempting to access staff Patient Master Index (PMI)
+        $this->actingAs($patientAccount, 'patient')
+            ->get(route('admin.patients.index'))
+            ->assertRedirect(route('admin.login'));
+
+        // Patient attempting to access staff Clinical Consultations queue
+        $this->actingAs($patientAccount, 'patient')
+            ->get(route('admin.consultations.index'))
+            ->assertRedirect(route('admin.login'));
+
+        // Patient attempting to access nursing triage
+        $this->actingAs($patientAccount, 'patient')
+            ->get(route('admin.triage.index'))
+            ->assertRedirect(route('admin.login'));
     }
 }

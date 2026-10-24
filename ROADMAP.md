@@ -187,14 +187,15 @@ The public website and back-office administration never duplicate data entities.
     - `X-Frame-Options: SAMEORIGIN`
     - `Referrer-Policy: strict-origin-when-cross-origin`
     - `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`
-    - `Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; frame-ancestors 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'`
-    - Automatic removal of `X-Powered-By` header to mitigate technology fingerprinting.
+    - `Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; frame-ancestors 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'` (tightened: removed unnecessary `'unsafe-eval'` and unused external CDN domain).
+    - Automatic removal of `X-Powered-By` header in Laravel response bag to mitigate technology fingerprinting (supplemented by Apache/PHP-FPM web-server runbook controls).
     - Conditional `Strict-Transport-Security: max-age=31536000; includeSubDomains` on HTTPS connections.
   - [x] Signed consultation note immutability:
-    - Once signed (`status === 'signed'`, `signed_at !== null`), original chief complaints, diagnoses, and assessments are immutable against direct update attempts (`403 Forbidden`).
+    - Application-level immutability enforced through model and controller authorization boundaries: once signed (`status === 'signed'`, `signed_at !== null`), original chief complaints, diagnoses, and assessments are immutable against direct update attempts (`403 Forbidden`). (Note: ordinary database application-level immutability; not cryptographic PKI signing).
     - Amendments can only be made via dedicated append-only addenda (`admin.consultations.addenda.store`).
     - Addenda creation is strictly restricted to attending clinicians (`role:doctor`).
     - Attempting to append addenda to unsigned draft consultations is rejected.
+    - Draft consultation notes are strictly confidential and inaccessible to other doctors (`403 Forbidden`).
     - Validation failures inside DB transaction roll back cleanly with zero partial persistence.
     - All addenda creation events are logged to the audit trail with author attribution and amendment rationale.
   - [x] Multi-guard session separation & IDOR defense:
@@ -250,15 +251,18 @@ The public website and back-office administration never duplicate data entities.
 | `tests/Feature/StaffAuthenticationTest.php` | 20 | 170 | Passed |
 | `tests/Feature/StaffAppointmentManagementAndLocalizationTest.php` | 4 | 29 | Passed |
 | `tests/Feature/StaffManagementTest.php` | 13 | 91 | Passed |
-| `tests/Feature/PatientManagementTest.php` | 15 | 104 | Passed |
-| `tests/Feature/DoctorConsultationAndEHRTest.php` | 17 | 114 | Passed |
+| `tests/Feature/PatientRegistrationAndTriageTest.php` | 7 | 56 | Passed |
+| `tests/Feature/ConsultationWorkflowTest.php` | 21 | 158 | Passed |
+| `tests/Feature/PrescriptionWorkflowTest.php` | 5 | 39 | Passed |
 | `tests/Feature/PharmacyDispensingAndInventoryTest.php` | 9 | 63 | Passed |
 | `tests/Feature/InventoryIntegrityAndTransactionsTest.php` | 6 | 45 | Passed |
 | `tests/Feature/DoctorPublicationAndReviewsTest.php` | 7 | 47 | Passed |
 | `tests/Feature/NewsCmsTest.php` | 5 | 37 | Passed |
 | `tests/Feature/PatientPortalAuthTest.php` | 10 | 114 | Passed |
-| `tests/Feature/SecurityHardeningAndPenetrationTest.php` | 12 | 173 | Passed |
-| **Total Test Suite** | **139** | **1,083** | **100% Pass (0 Failures)** |
+| `tests/Feature/SecurityHardeningAndPenetrationTest.php` | 16 | 203 | Passed |
+| `tests/Unit/ExampleTest.php` | 1 | 1 | Passed |
+| `tests/Feature/ExampleTest.php` | 1 | 1 | Passed |
+| **Total Test Suite** | **143** | **1,113** | **100% Pass (0 Failures)** |
 
 ---
 
