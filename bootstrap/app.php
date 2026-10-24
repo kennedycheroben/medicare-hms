@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+            'patient.auth' => \App\Http\Middleware\EnsurePatientPortalAuth::class,
         ]);
 
         $middleware->redirectTo(

@@ -62,7 +62,21 @@ Route::get('/contact', [ContactController::class, 'index'])->name('contact');
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:10,1')->name('contact.store');
 
 // 12. Patient Portal Entry
-Route::get('/portal/login', [PageController::class, 'portalLogin'])->name('portal.login');
+Route::prefix('portal')->name('portal.')->group(function () {
+    Route::get('/login', [\App\Http\Controllers\PatientPortalController::class, 'showLogin'])->name('login');
+    Route::post('/login', [\App\Http\Controllers\PatientPortalController::class, 'login'])->middleware('throttle:20,1')->name('login.store');
+    Route::get('/forgot-password', [\App\Http\Controllers\PatientPortalController::class, 'showForgot'])->name('forgot');
+    Route::post('/forgot-password', [\App\Http\Controllers\PatientPortalController::class, 'sendReset'])->middleware('throttle:10,1')->name('forgot.send');
+    Route::get('/activate/{token}', [\App\Http\Controllers\PatientPortalController::class, 'showActivate'])->name('activate');
+    Route::post('/activate/{token}', [\App\Http\Controllers\PatientPortalController::class, 'activate'])->middleware('throttle:10,1')->name('activate.store');
+
+    Route::middleware('patient.auth')->group(function () {
+        Route::get('/', [\App\Http\Controllers\PatientPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/password', [\App\Http\Controllers\PatientPortalController::class, 'editPassword'])->name('password.edit');
+        Route::put('/password', [\App\Http\Controllers\PatientPortalController::class, 'updatePassword'])->name('password.update');
+        Route::post('/logout', [\App\Http\Controllers\PatientPortalController::class, 'logout'])->name('logout');
+    });
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -103,6 +117,7 @@ Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
         Route::post('/patients', [\App\Http\Controllers\Admin\PatientController::class, 'store'])->name('admin.patients.store');
         Route::get('/patients/{patient}/edit', [\App\Http\Controllers\Admin\PatientController::class, 'edit'])->name('admin.patients.edit');
         Route::put('/patients/{patient}', [\App\Http\Controllers\Admin\PatientController::class, 'update'])->name('admin.patients.update');
+        Route::post('/patients/{patient}/portal-access', [\App\Http\Controllers\Admin\PatientPortalAccessController::class, 'issue'])->middleware('throttle:20,1')->name('admin.patients.portal-access');
     });
 
     Route::get('/patients/{patient}', [\App\Http\Controllers\Admin\PatientController::class, 'show'])

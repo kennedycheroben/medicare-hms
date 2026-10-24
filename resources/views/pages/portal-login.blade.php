@@ -19,29 +19,29 @@
                 <div class="col-md-6 col-lg-3">
                     <div class="card h-100 border-0 shadow-sm p-4 rounded-4 bg-white text-center">
                         <div class="fs-1 text-primary mb-2"><i class="bi bi-file-earmark-medical"></i></div>
-                        <h6 class="fw-bold mb-1">Diagnostic Reports</h6>
-                        <small class="text-muted">Download authorized pathology and radiology scans.</small>
+                        <h6 class="fw-bold mb-1">Visit History</h6>
+                        <small class="text-muted">See your visit history with us.</small>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3">
                     <div class="card h-100 border-0 shadow-sm p-4 rounded-4 bg-white text-center">
                         <div class="fs-1 text-primary mb-2"><i class="bi bi-calendar-check"></i></div>
                         <h6 class="fw-bold mb-1">Clinic Schedule</h6>
-                        <small class="text-muted">Review upcoming specialist consultations and reminders.</small>
+                        <small class="text-muted">See your upcoming appointments.</small>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3">
                     <div class="card h-100 border-0 shadow-sm p-4 rounded-4 bg-white text-center">
                         <div class="fs-1 text-primary mb-2"><i class="bi bi-prescription2"></i></div>
                         <h6 class="fw-bold mb-1">Prescription History</h6>
-                        <small class="text-muted">View doctor-authorized medication dosages.</small>
+                        <small class="text-muted">View the medicines your doctor prescribed.</small>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-3">
                     <div class="card h-100 border-0 shadow-sm p-4 rounded-4 bg-white text-center">
                         <div class="fs-1 text-primary mb-2"><i class="bi bi-shield-lock"></i></div>
-                        <h6 class="fw-bold mb-1">Secure & Encrypted</h6>
-                        <small class="text-muted">Protected under national health data privacy regulations.</small>
+                        <h6 class="fw-bold mb-1">Private Access</h6>
+                        <small class="text-muted">Only you can see your own records after signing in.</small>
                     </div>
                 </div>
             </div>
@@ -59,18 +59,20 @@
                             <p class="text-muted small">Enter your patient credentials to access your account</p>
                         </div>
 
-                        <!-- Phase Notice Alert -->
-                        <div class="alert alert-info border-0 rounded-3 small p-3 mb-4 bg-info-subtle">
-                            <i class="bi bi-info-circle-fill text-info me-2"></i>
-                            <strong>Phase Notice:</strong> The authenticated patient self-service dashboard is currently undergoing final security compliance testing. To request paper or digital copies of existing health records today, please reach our Registry Team at <strong>records@medicare-health.org</strong>.
-                        </div>
+                        @if (session('status'))
+                            <div class="alert alert-success small" role="status">{{ session('status') }}</div>
+                        @endif
+                        @if ($errors->any())
+                            <div class="alert alert-danger small" role="alert">{{ $errors->first() }}</div>
+                        @endif
 
-                        <form onsubmit="event.preventDefault(); alert('The authenticated patient self-service dashboard is scheduled for Phase 2. Please contact our hospital medical records office for immediate record inquiries.');">
+                        <form method="POST" action="{{ route('portal.login.store') }}">
+                            @csrf
                             <div class="mb-3">
                                 <label for="patient_id" class="form-label small fw-bold">Medical Record Number (MRN) or Email</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                                    <input type="text" class="form-control border-start-0" id="patient_id" placeholder="e.g. MRN-94821 or email" required>
+                                    <input type="text" class="form-control border-start-0" id="patient_id" name="identifier" value="{{ old('identifier') }}" autocomplete="username" placeholder="Your MRN or email address" required>
                                 </div>
                             </div>
 
@@ -78,16 +80,16 @@
                                 <label for="portal_password" class="form-label small fw-bold">Password</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
-                                    <input type="password" class="form-control border-start-0" id="portal_password" placeholder="••••••••" required>
+                                    <input type="password" class="form-control border-start-0" id="portal_password" name="password" autocomplete="current-password" required>
                                 </div>
                             </div>
 
                             <div class="d-flex justify-content-between align-items-center mb-4 small">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="remember_me">
+                                    <input class="form-check-input" type="checkbox" id="remember_me" name="remember" value="1">
                                     <label class="form-check-label text-muted" for="remember_me">Remember device</label>
                                 </div>
-                                <a href="#" class="text-primary text-decoration-none" onclick="event.preventDefault(); alert('Please visit our hospital registry desk or call support to reset your temporary password.');">Forgot password?</a>
+                                <a href="{{ route('portal.forgot') }}" class="text-primary text-decoration-none">Forgot password?</a>
                             </div>
 
                             <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm mb-3">
@@ -123,14 +125,14 @@
                             <span class="badge bg-primary rounded-circle p-2 px-3 me-3 fw-bold">2</span>
                             <div>
                                 <h6 class="fw-bold mb-1 fs-6">Receive Secure Activation Code</h6>
-                                <p class="text-muted small mb-0">An encrypted one-time activation link is sent to your verified mobile number.</p>
+                                <p class="text-muted small mb-0">A one-time activation link is emailed to the address on your patient record. It works once and expires after 48 hours.</p>
                             </div>
                         </div>
                         <div class="d-flex align-items-start">
                             <span class="badge bg-primary rounded-circle p-2 px-3 me-3 fw-bold">3</span>
                             <div>
                                 <h6 class="fw-bold mb-1 fs-6">Create Your Secure Password</h6>
-                                <p class="text-muted small mb-0">Set up multi-factor credentials to access your electronic health summary.</p>
+                                <p class="text-muted small mb-0">Choose a password of at least 10 characters with letters and numbers to open your account.</p>
                             </div>
                         </div>
                     </div>
@@ -139,7 +141,7 @@
                     <div class="card border-0 shadow-sm rounded-4 p-4 bg-light">
                         <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-lock-fill text-primary me-2"></i>Medical Privacy Commitment</h6>
                         <p class="text-muted small mb-3">
-                            Your medical history and clinical data are protected using 256-bit AES encryption. MediCare adheres strictly to international health information security standards and national Data Protection regulations.
+                            Your records are only shown to you after you sign in with your own password. The hospital handles personal data under the Kenya Data Protection Act, 2019. Never share your password; staff will never ask for it.
                         </p>
                         <div class="d-flex align-items-center text-muted small">
                             <i class="bi bi-headset text-primary fs-4 me-3"></i>

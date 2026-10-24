@@ -6,9 +6,9 @@
 @section('content')
 
     <x-page-header
-        title="News & Announcements"
-        subtitle="Official updates from the hospital"
-        :breadcrumbs="[['label' => 'News & Announcements']]"
+        title="News & Health Advisories"
+        subtitle="Official updates and clinical announcements from the hospital"
+        :breadcrumbs="[['label' => 'News & Health Advisories']]"
     />
 
     <section class="py-5 light-background">

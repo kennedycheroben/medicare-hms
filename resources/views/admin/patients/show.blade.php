@@ -29,6 +29,13 @@
                 <a href="{{ route('admin.patients.edit', $patient->id) }}" class="btn btn-outline-primary d-inline-flex align-items-center gap-1">
                     <i class="bi bi-pencil"></i> Edit Profile
                 </a>
+                <form method="POST" action="{{ route('admin.patients.portal-access', $patient->id) }}" class="d-inline"
+                      onsubmit="return confirm('Email a password link to the address on this patient\'s record?');">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-envelope-check"></i> Send Portal Access Link
+                    </button>
+                </form>
             @endif
         </div>
     </div>
