@@ -45,6 +45,10 @@ enum UserRole: string
                 'audit.view_logs',
                 'hospital.manage_departments',
                 'hospital.manage_doctors',
+                'doctors.publish',
+                'reviews.moderate',
+                'news.manage',
+                'patient_portal.issue_link',
                 'appointments.view_all',
                 'appointments.triage',
                 'reports.view_all',
@@ -53,6 +57,9 @@ enum UserRole: string
                 'reports.view_all',
                 'hospital.view_departments',
                 'hospital.view_doctors',
+                'doctors.publish',
+                'reviews.moderate',
+                'news.manage',
                 'appointments.view_all',
                 'census.view_overview',
                 'patients.view_summary',
@@ -79,6 +86,9 @@ enum UserRole: string
                 'pharmacy.dispense',
                 'pharmacy.formulary',
                 'pharmacy.inventory',
+                'inventory.otc_sale',
+                'inventory.adjust',
+                'inventory.wastage',
             ],
             self::LAB_TECHNICIAN => [
                 'lab.accession_specimens',
@@ -94,6 +104,7 @@ enum UserRole: string
             self::RECEPTIONIST => [
                 'patients.register',
                 'patients.view',
+                'patient_portal.issue_link',
                 'visits.intake',
                 'appointments.create',
                 'appointments.triage',
@@ -228,6 +239,7 @@ enum UserRole: string
                 'Enroll new patients and generate collision-safe MRNs',
                 'Check in walk-in arrivals and scheduled appointments to triage',
                 'Confirm, reschedule, cancel, and reconcile online appointment bookings',
+                'Issue secure Patient Portal activation links to verified patient emails',
             ],
         };
     }

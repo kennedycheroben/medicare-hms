@@ -61,6 +61,11 @@ Route::get('/news/{slug}', [PageController::class, 'newsShow'])->name('news.show
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:10,1')->name('contact.store');
 
+// 12. Legal Documentation & User Guide
+Route::get('/privacy', [PageController::class, 'privacy'])->name('privacy');
+Route::get('/terms', [PageController::class, 'terms'])->name('terms');
+Route::get('/guide', [PageController::class, 'guide'])->name('guide');
+
 // 12. Patient Portal Entry
 Route::prefix('portal')->name('portal.')->group(function () {
     Route::get('/login', [\App\Http\Controllers\PatientPortalController::class, 'showLogin'])->name('login');

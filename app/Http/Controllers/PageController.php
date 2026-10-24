@@ -114,4 +114,19 @@ class PageController extends Controller
     {
         return view('pages.portal-login');
     }
+
+    public function privacy()
+    {
+        return view('pages.privacy');
+    }
+
+    public function terms()
+    {
+        return view('pages.terms');
+    }
+
+    public function guide()
+    {
+        return view('pages.guide');
+    }
 }

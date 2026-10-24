@@ -92,6 +92,24 @@ class PublicWebsiteTest extends TestCase
             ->assertStatus(200)
             ->assertSee('Patient Portal Gateway')
             ->assertSee('Medical Privacy Commitment');
+
+        // 13. Privacy Policy (KDPA 2019)
+        $this->get(route('privacy'))
+            ->assertStatus(200)
+            ->assertSee('Privacy Policy & Data Protection')
+            ->assertSee('Kenya Data Protection Act, 2019');
+
+        // 14. Terms of Service
+        $this->get(route('terms'))
+            ->assertStatus(200)
+            ->assertSee('Terms of Service')
+            ->assertSee('Emergency Care Notice');
+
+        // 15. User Workbook & Guide
+        $this->get(route('guide'))
+            ->assertStatus(200)
+            ->assertSee('User Workbook')
+            ->assertSee('Who is MediCare HMS For?');
     }
 
     /**

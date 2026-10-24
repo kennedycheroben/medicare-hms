@@ -138,6 +138,7 @@
                             <li class="mb-2"><a href="{{ route('patient-info') }}#insurance" class="text-light text-decoration-none"><i class="bi bi-credit-card me-1 text-info"></i>Insurance & Payment Plans</a></li>
                             <li class="mb-2"><a href="{{ route('news') }}" class="text-light text-decoration-none"><i class="bi bi-newspaper me-1 text-info"></i>Health Advisories & News</a></li>
                             <li class="mb-2"><a href="{{ route('portal.login') }}" class="text-light text-decoration-none"><i class="bi bi-box-arrow-in-right me-1 text-info"></i>Patient Portal Entry</a></li>
+                            <li class="mb-2"><a href="{{ route('guide') }}" class="text-light text-decoration-none"><i class="bi bi-book me-1 text-info"></i>User Guide &amp; Manual</a></li>
                             <li class="mb-2"><a href="{{ route('health') }}" class="text-muted text-decoration-none"><i class="bi bi-heart-pulse-fill me-1"></i>System Status</a></li>
                         </ul>
                         <div class="mt-3 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1);">
@@ -161,7 +162,14 @@
         <div class="copyright py-3 border-top border-secondary border-opacity-25">
             <div class="container d-flex flex-column flex-lg-row justify-content-between align-items-center text-center text-lg-start small text-muted">
                 <div class="mb-2 mb-lg-0">
-                    &copy; {{ date('Y') }} <strong class="text-light">{{ config('hospital.name', 'MediCare Hospital') }}</strong>. All Rights Reserved. Hospital Management System.
+                    <div>&copy; {{ date('Y') }} <strong class="text-light">{{ config('hospital.name', 'MediCare Hospital') }}</strong>. All Rights Reserved. Hospital Management System.</div>
+                    <div class="mt-1 d-flex gap-3 justify-content-center justify-content-lg-start">
+                        <a href="{{ route('privacy') }}" class="text-secondary text-decoration-none">Privacy Policy</a>
+                        <span>·</span>
+                        <a href="{{ route('terms') }}" class="text-secondary text-decoration-none">Terms of Service</a>
+                        <span>·</span>
+                        <a href="{{ route('guide') }}" class="text-secondary text-decoration-none">System User Guide</a>
+                    </div>
                 </div>
                 <div class="social-links d-flex gap-3 fs-5">
                     <a href="#" class="text-muted" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>

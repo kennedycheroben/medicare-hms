@@ -161,6 +161,11 @@
         </div>
 
         <div class="d-flex align-items-center gap-3">
+            <a href="{{ route('guide') }}" class="btn btn-sm btn-outline-secondary d-none d-sm-inline-flex align-items-center gap-1" target="_blank">
+                <i class="bi bi-question-circle"></i>
+                <span>Operations Guide</span>
+            </a>
+
             <a href="{{ route('home') }}" class="btn btn-sm btn-outline-secondary d-none d-md-inline-flex align-items-center gap-1" target="_blank">
                 <i class="bi bi-box-arrow-up-right"></i>
                 <span>Public Website</span>
@@ -328,6 +333,13 @@
                         <span>Security Audit Log</span>
                     </a>
                 @endif
+
+                <div class="px-3 pt-3 mt-3 border-top border-secondary border-opacity-25">
+                    <a href="{{ route('guide') }}" class="nav-link text-muted small py-1" target="_blank">
+                        <i class="bi bi-book"></i>
+                        <span>System User Guide</span>
+                    </a>
+                </div>
             </nav>
         </div>
     </aside>
