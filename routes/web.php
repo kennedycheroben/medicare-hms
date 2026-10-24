@@ -96,10 +96,10 @@ Route::middleware('guest')->group(function () {
 });
 
 // Authenticated Staff Logout
-Route::post('/admin/logout', [\App\Http\Controllers\Admin\AdminAuthController::class, 'logout'])->middleware('auth')->name('admin.logout');
+Route::post('/admin/logout', [\App\Http\Controllers\Admin\AdminAuthController::class, 'logout'])->middleware('auth:web')->name('admin.logout');
 
 // Protected Staff Admin Group
-Route::prefix('admin')->middleware(['auth', 'active'])->group(function () {
+Route::prefix('admin')->middleware(['auth:web', 'active'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
 
     // 1. Staff Management (SuperAdmin only)

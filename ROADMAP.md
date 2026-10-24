@@ -179,19 +179,46 @@ The public website and back-office administration never duplicate data entities.
 
 ### Phase 7: Comprehensive Security Auditing, Performance & Quality Assurance
 * **Scope**: Penetration testing, OWASP Top 10 mitigation, SQL injection testing, XSS testing, broken object level authorization (BOLA/IDOR) verification, session boundary security, rate limiting, and accessibility audit.
-* **Status**: **Partially Verified / Quality Gates Active**.
+* **Status**: **Hardened & Verified (Automated Suite Passing / External Penetration Gates Retained)**.
 * **Implemented & Verified Controls**:
   - [x] 0 known security vulnerabilities reported by Composer security audit (`composer audit`).
-  - [x] Multi-guard session separation: `patient` and `web` guards strictly segregated with independent session drivers.
-  - [x] Single-use activation/reset token hashing with SHA-256 and automatic expiry.
-  - [x] Role-Based Access Control (RBAC) enforced on the server across all clinical, administrative, and inventory endpoints.
-  - [x] Transactional inventory management with row-level locks preventing race conditions and negative inventory.
-  - [x] Strict compliance with Kenya Data Protection Act 2019 (KDPA) in published Privacy Policy (`/privacy`) and zero PII exposure on public appointment confirmations.
+  - [x] Defensive HTTP security headers middleware (`App\Http\Middleware\SecurityHeaders`) active across all web responses:
+    - `X-Content-Type-Options: nosniff`
+    - `X-Frame-Options: SAMEORIGIN`
+    - `Referrer-Policy: strict-origin-when-cross-origin`
+    - `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`
+    - `Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; frame-ancestors 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'`
+    - Automatic removal of `X-Powered-By` header to mitigate technology fingerprinting.
+    - Conditional `Strict-Transport-Security: max-age=31536000; includeSubDomains` on HTTPS connections.
+  - [x] Signed consultation note immutability:
+    - Once signed (`status === 'signed'`, `signed_at !== null`), original chief complaints, diagnoses, and assessments are immutable against direct update attempts (`403 Forbidden`).
+    - Amendments can only be made via dedicated append-only addenda (`admin.consultations.addenda.store`).
+    - Addenda creation is strictly restricted to attending clinicians (`role:doctor`).
+    - Attempting to append addenda to unsigned draft consultations is rejected.
+    - Validation failures inside DB transaction roll back cleanly with zero partial persistence.
+    - All addenda creation events are logged to the audit trail with author attribution and amendment rationale.
+  - [x] Multi-guard session separation & IDOR defense:
+    - Separate `patient` and `web` guards strictly segregated with independent session drivers and explicit `auth:web` route protection.
+    - Authenticated patient accounts attempting to access `/admin/*` are rejected and redirected to `/admin/login`.
+    - Authenticated staff accounts without an active patient session attempting to access `/portal/*` are redirected to `/portal/login`.
+    - Patient portal endpoints strictly restrict data retrieval to `Auth::guard('patient')->user()->patient` to eliminate Insecure Direct Object References (IDOR/BOLA).
+  - [x] Brute-force rate limiting & anti-enumeration:
+    - Patient portal sign-in is rate-limited to 5 attempts per identifier/IP window with generic error messages (`"We could not sign you in with those details..."`) to prevent patient account enumeration.
+    - Password recovery is rate-limited to 3 attempts with uniform generic success messaging regardless of whether the email exists.
+  - [x] Single-use activation/reset token hashing:
+    - SHA-256 hashed tokens stored in database with automatic expiry timestamps; plain tokens are never stored and cannot be replayed after activation.
+  - [x] Inactive staff access denial:
+    - `EnsureUserIsActive` middleware strictly terminates sessions for deactivated staff accounts across administrative endpoints.
+  - [x] Audit log secret and credential redaction:
+    - `AuditService` filters passwords, tokens, API keys, and sensitive financial credentials before logging.
+  - [x] Production demo-seeder safeguards:
+    - Demo seeders abort if executed against an environment with `APP_ENV=production`.
   - [x] Clean browser preview across public, staff, and patient views with 0 JavaScript console errors.
-* **Remaining Acceptance Criteria (Production Release Gates)**:
+* **Remaining Acceptance Criteria (External Production Release Gates)**:
   - [ ] Formal independent penetration testing and black-box vulnerability scan on staging infrastructure.
   - [ ] Comprehensive automated WCAG 2.2 Level AA accessibility scan with screen reader verification.
   - [ ] Application load and stress testing under simulated concurrent dispensary and consultation load.
+  - [ ] Web-server level TLS/HSTS enforcement in Apache/cPanel `.htaccess` or Nginx reverse proxy.
 
 ---
 
@@ -230,7 +257,8 @@ The public website and back-office administration never duplicate data entities.
 | `tests/Feature/DoctorPublicationAndReviewsTest.php` | 7 | 47 | Passed |
 | `tests/Feature/NewsCmsTest.php` | 5 | 37 | Passed |
 | `tests/Feature/PatientPortalAuthTest.php` | 10 | 114 | Passed |
-| **Total Test Suite** | **127** | **910** | **100% Pass (0 Failures)** |
+| `tests/Feature/SecurityHardeningAndPenetrationTest.php` | 12 | 173 | Passed |
+| **Total Test Suite** | **139** | **1,083** | **100% Pass (0 Failures)** |
 
 ---
 

@@ -18,11 +18,11 @@ class EnsureUserIsActive
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Auth::check()) {
+        if (Auth::guard('web')->check()) {
             /** @var User $user */
-            $user = Auth::user();
+            $user = Auth::guard('web')->user();
 
-            if (! $user->isActive()) {
+            if ($user instanceof User && ! $user->isActive()) {
                 AuditService::record(
                     action: 'auth.deactivated_session_revoked',
                     resourceType: 'session',
