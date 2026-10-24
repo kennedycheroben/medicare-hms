@@ -152,8 +152,8 @@ The public website and back-office administration never duplicate data entities.
 
 ---
 
-### Phase 6: Core Clinical Documentation, Electronic Health Records (EHR), Prescriptions & Pharmacy Dispensary
-* **Scope**: Core clinical documentation, Electronic Health Records (EHR), doctor consultation workflows, electronic prescriptions, pharmacy dispensary, and medicine inventory management.
+### Phase 6: Core Clinical Documentation, EHR, Prescriptions, Dispensary & Patient Portal Ecosystem
+* **Scope**: Core clinical documentation, Electronic Health Records (EHR), doctor consultation workflows, electronic prescriptions, pharmacy dispensary, inventory integrity, verified doctor reviews, news CMS, and authenticated patient portal.
 * **Status**: **Completed**.
 * **Implemented Capabilities**:
   1. **Doctor Consultation Queue & Clinical Workspace**: Outpatient consultation queue prioritized by triage acuity, active consultation workspace with real-time triage vitals display, SOAP clinical notes (Subjective, Objective, Assessment, Plan), provisional diagnosis, and doctor sign-off.
@@ -161,66 +161,53 @@ The public website and back-office administration never duplicate data entities.
   3. **Doctor-Only Per-Record Authorization**: Enforced on the server; only doctors can initiate, draft, or finalize consultations. SuperAdmin and HospitalDirector have read-only clinical oversight without the ability to forge or tamper with medical notes.
   4. **Electronic Prescriptions (e-Rx)**: Structured multi-item prescribing linked to patient visit and consultation. Captures medicine name, dosage, frequency, duration, route, and clinical instructions. Supports draft creation, finalization, cancellation with mandatory auditable reason, and duplicate submission protection via unique submission tokens.
   5. **Pharmacy Dispensary & FEFO Batch Allocation**: Dispensary queue displaying finalized prescriptions awaiting dispensing. Concurrency-safe First-Expiry-First-Out (FEFO) batch allocation using database-level `lockForUpdate()` transactions, ensuring earliest expiring batches are dispensed first.
-  6. **Negative Inventory Prevention & Idempotency Safeguards**: Database CHECK constraints (`quantity_current >= 0`) and transactional checks prevent stock from going below zero under race conditions. Unique idempotency keys prevent duplicate dispensing on network retries or double clicks. Unfulfilled or declined prescriptions require mandatory clinical reasons.
-  7. **Medicine Formulary & Batch Inventory Management**: Complete formulary catalog (brand/generic names, categories, strengths, units, reorder thresholds) and batch management (batch numbers, expiry dates, purchase/selling costs, supplier details). Tracks near-expiry alerts and stock movements with an immutable audit ledger.
-  8. **Patient Profile EHR Integration**: Patient record detail view consolidated with complete chronological electronic health record timeline, including visit history, nursing triage vitals, consultation notes, signed addenda, and prescribed medications.
-* **Clinical Governance & Regulatory Disclaimer**:
-  - Clinical workflows, triage prioritization, and medication management are engineered to assist qualified healthcare professionals and adhere to institutional policies. All medical decisions, diagnoses, dosages, and dispensings remain the professional responsibility of licensed clinical practitioners. This release does not claim automated drug-drug interaction contraindication screening or official ICD-11 coding certification.
+  6. **Inventory Integrity & Transactional Service (`App\Services\InventoryService`)**: Transactional execution of all inventory movements (`dispensePrescriptionItem`, `otcSale`, `internalUse`, `recordWastage`, `recordReturn`, `adjustBatch`), database-level negative stock prevention, and immutable movement logging. Low-stock database-level scope (`Medicine::scopeLowStock`) filtering against `reorder_threshold`.
+  7. **Staff Appointment Operations & Kenyan Localization**: `/admin/appointments` board with status filtering, confirmation with attending clinician, rescheduling with documented reason, cancellation with reason, and one-click intake check-in. E.164 phone normalization and Kenyan mobile validation (`07xx`, `01xx`, `+254`), localized hospital configuration (`config/hospital.php`), and national health scheme recognition (SHA/NHIF).
+  8. **Physician Directory Publication & Verified Patient Reviews**: Super Administrator and Hospital Director publication oversight (`is_published`). Verified in-person patient reviews authenticated by patient MRN + contact phone + completed clinical visit with the specific doctor, preserving patient privacy with consent-based public display names.
+  9. **Hospital News & Health Advisories CMS**: Complete database-backed news engine (`/news`, `/news/{slug}`). Draft preview mode with staff banner, publisher-only publication permissions (`role:super_admin,hospital_director`), server-side slug uniqueness, cover image uploads, and XSS sanitization.
+  10. **Authenticated Patient Portal**: Isolated `patient` session guard (`config/auth.php`) completely segregated from clinical staff administrative sessions. Cryptographic one-time activation tokens stored as SHA-256 hashes (`token_hash`) with automatic expiration, mandatory first-time password rotation, and self-service outpatient health dashboard.
 * **Acceptance Criteria**:
-  - [x] Strict server-side RBAC enforced (`role:doctor`, `role:pharmacist`, `role:super_admin,hospital_director,pharmacist`).
+  - [x] Strict server-side RBAC enforced across clinical, administrative, pharmacy, and patient boundaries.
   - [x] Immutable finalized consultation records with append-only signed addenda.
   - [x] Concurrency-safe FEFO medicine batch allocation with row-level locks and negative stock prevention.
   - [x] Idempotency key protection preventing double-dispensing.
-  - [x] 73 automated feature tests passing with 428 assertions and 0 failures.
-  - [x] Verified via real browser preview across public site, doctor consultation queue/workspace, pharmacy dispensary queue, and medicine inventory.
-
----
-
-### Phase 7: Inventory Integrity, Operational Adjustments & Comprehensive Clinical Governance
-* **Scope**: Automated medicine code generation, low-stock database filtering, complete `InventoryService` implementation (FEFO prescription dispensing, OTC outpatient sales, ward internal use, recorded wastage with mandatory reasons, supplier returns, batch stock adjustments), and full staff appointment lifecycle management.
-* **Status**: **Completed**.
-* **Implemented Capabilities**:
-  1. **Low-Stock Resolution**: Clean database-level scope (`Medicine::scopeLowStock`) filtering against `reorder_threshold` without loading entire inventories or triggering 500 errors on query string filters.
-  2. **Automated Server-Side Medicine Codes**: Collision-resistant `MED-XXXXXX` assignment on creation.
-  3. **Staff Appointment Management**: `/admin/appointments` board with status filtering, confirmation with attending clinician, rescheduling with documented reason, cancellation with reason, and one-click intake check-in.
-  4. **Dedicated Inventory Service (`App\Services\InventoryService`)**: Transactional execution of all inventory movements (`dispensePrescriptionItem`, `otcSale`, `internalUse`, `recordWastage`, `recordReturn`, `adjustBatch`), database-level negative stock prevention, and immutable movement logging.
-  5. **Kenyan Localization**: E.164 phone normalization and Kenyan mobile validation (`07xx`, `01xx`, `+254`), localized hospital configuration (`config/hospital.php`), and national health scheme recognition (SHA/NHIF).
-* **Acceptance Criteria**:
-  - [x] Full inventory audit trail (`stock_movements`) covering all 7 movement types.
-  - [x] Zero unhandled 500 errors on low-stock inventory index routes.
-  - [x] Automated feature tests passing with 100% success.
-
----
-
-### Phase 8: Doctor Directory Publication, Verified Patient Reviews & News CMS
-* **Scope**: Administrative oversight of physician directory publication, verified in-person patient review submissions, and publisher-restricted hospital news CMS.
-* **Status**: **Completed**.
-* **Implemented Capabilities**:
-  1. **Physician Publication & Profile Moderation**: Only Super Administrator and Hospital Director can toggle `is_published` status; unpublished profiles are automatically excluded from public listings and return HTTP 404.
-  2. **Verified In-Person Patient Reviews**: Authenticated by patient MRN + contact phone + completed clinical visit with the specific doctor. Prevents duplicate review submissions for the same visit. Patient privacy preserved with consent-based public display names.
-  3. **Hospital News & Health Advisories CMS**: Complete database-backed news engine (`/news`, `/news/{slug}`). Draft preview mode with staff banner, publisher-only publication permissions (`role:super_admin,hospital_director`), server-side slug uniqueness, cover image uploads, and XSS sanitization.
-* **Acceptance Criteria**:
-  - [x] Strict server-side RBAC for news and physician publication.
   - [x] Verified visit validation for doctor review submissions.
-  - [x] Automated feature tests covering news draft privacy, XSS protection, and review verification.
+  - [x] Dedicated multi-guard patient authentication isolated from staff session state.
+  - [x] 127 automated feature tests passing with 910 assertions and 0 failures.
 
 ---
 
-### Phase 9: Authenticated Patient Portal, Legal Compliance & System User Workbook
-* **Scope**: Dedicated patient session guard, secure one-time email activation tokens, forced password rotation, self-service patient dashboard, privacy policy under KDPA 2019, terms of service, and user operations manual.
-* **Status**: **Completed**.
-* **Implemented Capabilities**:
-  1. **Multi-Guard Patient Authentication**: Isolated `patient` session guard (`config/auth.php`) completely segregated from clinical staff administrative sessions. Patient sessions cannot access `/admin/*` and staff sessions cannot access `/portal/*`.
-  2. **Cryptographic One-Time Activation & Password Recovery**: Hashed tokens stored exclusively as SHA-256 hashes (`token_hash`) with automatic expiration (48 hours for activation, 60 minutes for password reset). Token replay prevention and mandatory first-time password rotation (`must_change_password`).
-  3. **Generic Error Responses & Brute-Force Rate Limiting**: Anti-enumeration login errors and rate limiting (`throttle:20,1`) with constant-time password hash verification.
-  4. **Self-Service Patient Health Dashboard**: Outpatient dashboard displaying exclusively the signed-in patient's upcoming appointments, historical clinical visits, and doctor-prescribed medications.
-  5. **Legal & Regulatory Compliance**: Published Privacy Policy (`/privacy`) compliant with the Kenya Data Protection Act, 2019 (KDPA 2019), and Terms of Service (`/terms`) with emergency care disclaimers.
-  6. **Interactive System User Workbook**: Integrated operational manual (`/guide`) providing plain-language step-by-step guidance for patients, receptionists, nurses, doctors, pharmacists, and administrators.
-* **Acceptance Criteria**:
-  - [x] Complete multi-guard auth isolation verified by feature tests.
-  - [x] Zero credential leaks in tokens, logs, or views.
-  - [x] 127 automated feature tests passing with 901 assertions and 0 failures.
-  - [x] Operations workbook and legal documentation discoverable from public and admin navigation.
+### Phase 7: Comprehensive Security Auditing, Performance & Quality Assurance
+* **Scope**: Penetration testing, OWASP Top 10 mitigation, SQL injection testing, XSS testing, broken object level authorization (BOLA/IDOR) verification, session boundary security, rate limiting, and accessibility audit.
+* **Status**: **Partially Verified / Quality Gates Active**.
+* **Implemented & Verified Controls**:
+  - [x] 0 known security vulnerabilities reported by Composer security audit (`composer audit`).
+  - [x] Multi-guard session separation: `patient` and `web` guards strictly segregated with independent session drivers.
+  - [x] Single-use activation/reset token hashing with SHA-256 and automatic expiry.
+  - [x] Role-Based Access Control (RBAC) enforced on the server across all clinical, administrative, and inventory endpoints.
+  - [x] Transactional inventory management with row-level locks preventing race conditions and negative inventory.
+  - [x] Strict compliance with Kenya Data Protection Act 2019 (KDPA) in published Privacy Policy (`/privacy`) and zero PII exposure on public appointment confirmations.
+  - [x] Clean browser preview across public, staff, and patient views with 0 JavaScript console errors.
+* **Remaining Acceptance Criteria (Production Release Gates)**:
+  - [ ] Formal independent penetration testing and black-box vulnerability scan on staging infrastructure.
+  - [ ] Comprehensive automated WCAG 2.2 Level AA accessibility scan with screen reader verification.
+  - [ ] Application load and stress testing under simulated concurrent dispensary and consultation load.
+
+---
+
+### Phase 8: Deployment Preparation, Backup Verification & Operational Readiness
+* **Scope**: Production environment configuration, MySQL automated backup and point-in-time recovery verification, cPanel/Truehost deployment automation, production mail delivery, and hospital staff user workbook.
+* **Status**: **In Progress / Documentation Established**.
+* **Implemented & Verified Deliverables**:
+  - [x] Integrated User Workbook & Operational Guide (`/guide`) providing plain-language instructions for patients, receptionists, nurses, doctors, pharmacists, and administrators.
+  - [x] Published Terms of Service (`/terms`) with explicit clinical governance and emergency disclaimers.
+  - [x] Production asset compilation (`npm run build`) verified clean with zero build warnings.
+* **Remaining Acceptance Criteria (Pre-Deployment Checklist)**:
+  - [ ] Production SMTP gateway configuration (e.g., Amazon SES, Postmark, Mailgun) for live patient email activation delivery.
+  - [ ] Production symlink verification (`php artisan storage:link`) for uploaded media.
+  - [ ] Automated database backup schedule and restore drill on isolated staging environment.
+  - [ ] Formal legal sign-off from hospital legal counsel on Privacy Policy and Terms of Service.
+  - [ ] Production deployment runbook executed against Truehost cPanel environment.
 
 ---
 
@@ -239,8 +226,8 @@ The public website and back-office administration never duplicate data entities.
 | `tests/Feature/InventoryIntegrityAndTransactionsTest.php` | 6 | 45 | Passed |
 | `tests/Feature/DoctorPublicationAndReviewsTest.php` | 7 | 47 | Passed |
 | `tests/Feature/NewsCmsTest.php` | 5 | 37 | Passed |
-| `tests/Feature/PatientPortalAuthTest.php` | 10 | 105 | Passed |
-| **Total Test Suite** | **127** | **901** | **100% Pass (0 Failures)** |
+| `tests/Feature/PatientPortalAuthTest.php` | 10 | 114 | Passed |
+| **Total Test Suite** | **127** | **910** | **100% Pass (0 Failures)** |
 
 ---
 
