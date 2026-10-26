@@ -202,7 +202,7 @@
                                     <tr>
                                         <td class="ps-4 small text-muted font-monospace">{{ $log->created_at->format('Y-m-d H:i:s') }}</td>
                                         <td><span class="badge bg-light text-dark font-monospace">{{ $log->action }}</span></td>
-                                        <td>{{ $log->performer->name ?? 'System / Anonymous' }}</td>
+                                        <td>{{ $log->performer?->name ?? $log->user?->name ?? $log->actor_email ?? 'System / Anonymous' }}</td>
                                         <td class="pe-4 small text-muted">
                                             @if($log->details)
                                                 @foreach($log->details as $k => $v)

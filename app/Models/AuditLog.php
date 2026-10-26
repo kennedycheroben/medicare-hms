@@ -54,4 +54,12 @@ class AuditLog extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Alias for the user who performed the audited action.
+     */
+    public function performer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

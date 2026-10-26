@@ -268,4 +268,43 @@ class DeploymentReadinessTest extends TestCase
         $this->assertStringContainsString("phpunit\\.xml", $scriptContent);
         $this->assertStringContainsString("\\.key$", $scriptContent);
     }
+
+    // =========================================================================
+    // 5. Truehost cPanel Split Directory Layout & Runtime Integrity Tests
+    // =========================================================================
+
+    public function test_public_front_controller_supports_split_cpanel_directory_layout(): void
+    {
+        $indexPath = $this->projectRoot.'/public/index.php';
+        $this->assertFileExists($indexPath);
+
+        $indexContent = file_get_contents($indexPath);
+        $this->assertStringContainsString('medicare-hms-app', $indexContent, 'Front controller must support medicare-hms-app path');
+        $this->assertStringContainsString('$appBasePath', $indexContent, 'Front controller must dynamically resolve $appBasePath');
+    }
+
+    public function test_bootstrap_supports_cpanel_public_path_binding(): void
+    {
+        $bootstrapPath = $this->projectRoot.'/bootstrap/app.php';
+        $this->assertFileExists($bootstrapPath);
+
+        $bootstrapContent = file_get_contents($bootstrapPath);
+        $this->assertStringContainsString('medicare.kennedycheroben.co.ke', $bootstrapContent);
+        $this->assertStringContainsString('LARAVEL_PUBLIC_PATH', $bootstrapContent);
+        $this->assertStringContainsString('usePublicPath', $bootstrapContent);
+    }
+
+    public function test_compiled_vite_assets_and_manifest_exist_for_production(): void
+    {
+        $manifestPath = $this->projectRoot.'/public/build/manifest.json';
+        $this->assertFileExists($manifestPath, 'Production Vite manifest.json must be present');
+
+        $manifest = json_decode(file_get_contents($manifestPath), true);
+        $this->assertIsArray($manifest);
+        $this->assertArrayHasKey('resources/css/app.css', $manifest);
+        $this->assertArrayHasKey('resources/js/app.js', $manifest);
+
+        $cssAsset = $this->projectRoot.'/public/build/'.$manifest['resources/css/app.css']['file'];
+        $this->assertFileExists($cssAsset, 'Compiled CSS asset must exist on disk');
+    }
 }

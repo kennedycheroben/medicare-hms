@@ -62,6 +62,97 @@
             font-size: 0.72rem;
         }
 
+        /* Profile Dropdown Header - Fix layout and overlap */
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .header-actions-desktop {
+            flex-shrink: 0;
+        }
+
+        .profile-dropdown {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .profile-dropdown .profile-btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
+            width: auto !important;
+            height: auto !important;
+            min-height: 38px !important;
+            padding: 4px 10px 4px 6px !important;
+            background: transparent !important;
+            border: 1px solid transparent !important;
+            border-radius: var(--radius-lg, 8px) !important;
+            cursor: pointer;
+            text-decoration: none !important;
+            color: inherit !important;
+            transition: background-color var(--transition-fast, 150ms ease), border-color var(--transition-fast, 150ms ease);
+        }
+
+        .profile-dropdown .profile-btn:hover,
+        .profile-dropdown .profile-btn:focus-visible,
+        .profile-dropdown.show .profile-btn {
+            background-color: color-mix(in srgb, var(--accent-color, #1a66c4), transparent 90%) !important;
+            border-color: color-mix(in srgb, var(--accent-color, #1a66c4), transparent 82%) !important;
+            outline: none !important;
+        }
+
+        .profile-dropdown .dropdown-toggle::after {
+            display: none !important;
+        }
+
+        .profile-meta-wrap {
+            max-width: 175px;
+            line-height: 1.25;
+            text-align: left;
+        }
+
+        .profile-meta-name {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--default-color, #1e293b);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .profile-meta-role {
+            font-size: 0.7rem;
+            color: var(--muted-color, #64748b);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        [data-theme=dark] .profile-meta-name {
+            color: #f1f5f9;
+        }
+        [data-theme=dark] .profile-meta-role {
+            color: #94a3b8;
+        }
+
+        @media (max-width: 991.98px) {
+            .header-search {
+                max-width: 260px;
+                margin: 0 var(--spacing-sm);
+            }
+            .profile-meta-wrap {
+                max-width: 130px;
+            }
+        }
+
         /* Soft Badges */
         .badge-soft-primary { background-color: rgba(26, 102, 196, 0.12); color: #1a66c4; }
         .badge-soft-success { background-color: rgba(34, 197, 94, 0.12); color: #15803d; }
@@ -195,8 +286,8 @@
 
                 <!-- Dark/Light Theme Toggle -->
                 <button class="header-action theme-toggle" title="Toggle Theme" type="button" aria-label="Toggle Theme">
-                    <i class="ph ph-moon theme-icon-dark"></i>
-                    <i class="ph ph-sun theme-icon-light"></i>
+                    <i class="bi bi-moon-stars theme-icon-dark"></i>
+                    <i class="bi bi-sun theme-icon-light"></i>
                 </button>
 
                 <!-- Operations Guide Shortcut -->
@@ -217,14 +308,14 @@
                     $roleVal = $user->role instanceof \App\Enums\UserRole ? $user->role->value : (string) $user->role;
                     $roleLabel = $user->role instanceof \App\Enums\UserRole ? $user->role->label() : ucfirst(str_replace('_', ' ', $roleVal));
                 @endphp
-                <div class="header-action dropdown profile-dropdown ms-1">
-                    <button class="dropdown-toggle d-flex align-items-center gap-2 border-0 bg-transparent py-1 px-2 rounded-2" data-bs-toggle="dropdown" aria-expanded="false" title="User Menu" type="button">
+                <div class="dropdown profile-dropdown ms-1">
+                    <button class="dropdown-toggle profile-btn border-0" data-bs-toggle="dropdown" aria-expanded="false" title="Staff Account Menu" type="button">
                         <div class="avatar-circle">
                             <span>{{ strtoupper(substr($user->name, 0, 1)) }}</span>
                         </div>
-                        <div class="d-none d-md-flex flex-column text-start" style="line-height: 1.2;">
-                            <span class="fw-semibold text-dark small">{{ $user->name }}</span>
-                            <span class="text-muted extra-small" style="font-size: 0.72rem;">{{ $roleLabel }}</span>
+                        <div class="d-none d-md-flex flex-column profile-meta-wrap">
+                            <span class="profile-meta-name">{{ $user->name }}</span>
+                            <span class="profile-meta-role">{{ $roleLabel }}</span>
                         </div>
                         <i class="bi bi-chevron-down d-none d-md-inline ms-1 fs-xs text-muted"></i>
                     </button>
@@ -271,8 +362,8 @@
     <div class="mobile-header-menu">
         <div class="mobile-header-menu-content">
             <button class="mobile-menu-item theme-toggle" title="Toggle Theme" type="button">
-                <i class="ph ph-moon theme-icon-dark"></i>
-                <i class="ph ph-sun theme-icon-light"></i>
+                <i class="bi bi-moon-stars theme-icon-dark"></i>
+                <i class="bi bi-sun theme-icon-light"></i>
                 <span class="mobile-menu-label">Theme</span>
             </button>
             <a href="{{ route('admin.dashboard') }}" class="mobile-menu-item">

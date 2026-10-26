@@ -1,10 +1,13 @@
 # MediCare Hospital Management System — Truehost & cPanel Production Deployment Runbook
 
-**Document Version:** 1.0.0  
-**Target Environment:** Truehost Cloud Shared Hosting / cPanel Linux Environment  
-**Stack:** PHP 8.3 / 8.4, MariaDB 10.4+ / MySQL 8.0, Apache/LiteSpeed, Laravel 13, Bootstrap, Blade  
-**Target Application Location:** `~/medicare-hms` (strictly outside `public_html`)  
-**Public Web Document Root:** `~/public_html` or domain document root pointed to `~/medicare-hms/public`  
+- **Document Version:** 1.1.0
+- **Target Environment:** Truehost Cloud Shared Hosting / cPanel Linux Environment
+- **Stack:** PHP 8.3 / 8.4, MariaDB 10.4+ / MySQL 8.0, Apache/LiteSpeed, Laravel 13, Bootstrap, Blade
+- **Production Domain:** `medicare.kennedycheroben.co.ke`
+- **cPanel Username:** `xqtrqexj`
+- **Target Git Branch:** `feat/ehr-doctor-consultation-pharmacy`
+- **Target Application Location:** `/home/xqtrqexj/medicare-hms-app` (strictly outside document root)
+- **Public Web Document Root:** `/home/xqtrqexj/medicare.kennedycheroben.co.ke`
 
 ---
 
@@ -17,29 +20,36 @@
 
 ## 1. Architectural Architecture & Directory Strategy on cPanel
 
-### Critical Security Rule: Never Deploy Directly Inside `public_html`
-Placing a complete Laravel application inside `public_html/` exposes `.env`, `storage/logs/`, `database/`, and sensitive vendor code to direct public HTTP access if Apache `.htaccess` is ever bypassed or ignored.
+### Critical Security Rule: Never Deploy Directly Inside Public Document Root
+Placing a complete Laravel application inside the public document root exposes `.env`, `storage/logs/`, `database/`, and sensitive vendor code to direct public HTTP access if Apache `.htaccess` is ever bypassed or ignored.
 
-### Recommended cPanel Directory Layout:
+### Truehost cPanel Directory Layout:
 ```
-/home/cpanelusername/
-├── medicare-hms/              <-- Laravel Application Root (Private, inaccessible via web)
+/home/xqtrqexj/
+├── medicare-hms-app/          <-- Laravel Application Root (Private, inaccessible via web)
 │   ├── app/
 │   ├── bootstrap/
 │   ├── config/
 │   ├── database/
+│   ├── public/
+│   │   ├── admin-assets/
+│   │   ├── assets/
+│   │   └── build/             <-- Pre-compiled Vite assets (CSS/JS/fonts)
 │   ├── resources/
 │   ├── routes/
+│   ├── scripts/
 │   ├── storage/
 │   ├── vendor/
 │   ├── .env                   <-- Server-only production secrets (chmod 600)
 │   ├── artisan
 │   └── composer.json
-└── public_html/               <-- Public Document Root (Public HTTP access only)
-    ├── build/                 <-- Pre-compiled Vite assets (CSS/JS)
-    ├── storage                <-- Symlink to ~/medicare-hms/storage/app/public
-    ├── index.php              <-- Front controller forwarding to ~/medicare-hms
-    ├── .htaccess              <-- Security headers and URL rewriting
+└── medicare.kennedycheroben.co.ke/  <-- Public Document Root (Public HTTP access only)
+    ├── admin-assets/          <-- Isolated admin dashboard CSS/JS/fonts
+    ├── assets/                <-- Public website static assets
+    ├── build/                 <-- Pre-compiled Vite assets (CSS/JS/fonts)
+    ├── storage/               <-- Symlink to /home/xqtrqexj/medicare-hms-app/storage/app/public
+    ├── index.php              <-- Front controller forwarding to /home/xqtrqexj/medicare-hms-app
+    ├── .htaccess              <-- Preserves cPanel PHP handler + Laravel rewrite rules
     ├── favicon.ico
     └── robots.txt
 ```
@@ -105,54 +115,70 @@ sha256sum /tmp/medicare-hms-deploy_*.tar.gz
 
 ### Step B.2: Create Production Database & User
 1. Open **MySQL Database Wizard** in cPanel.
-2. Create database: `cpaneluser_medicare_prod`.
-3. Create user: `cpaneluser_medicare_user` with a strong, randomly generated password (minimum 24 characters).
+2. Create database: `xqtrqexj_medicare_prod`.
+3. Create user: `xqtrqexj_medicare_user` with a strong, randomly generated password (minimum 24 characters).
 4. Assign user to database with **ALL PRIVILEGES**.
 5. Record database name, user, and password securely in password manager (never commit to repository).
 
-### Step B.3: Upload and Extract Application Files
-1. Open cPanel **File Manager** (or connect via SFTP / SSH).
-2. Create directory `/home/cpanelusername/medicare-hms`.
-3. Upload `medicare-hms-deploy.tar.gz` into `/home/cpanelusername/medicare-hms`.
-4. Extract the archive:
+### Step B.3: Deploy Application Code via Git (Recommended) or Archive
+Log in via SSH or cPanel Terminal:
+
+#### Method 1: Git-Based Deployment (Recommended)
+```bash
+# Clone the verified feature branch directly outside document root
+git clone -b feat/ehr-doctor-consultation-pharmacy https://github.com/kennedycheroben/medicare-hms.git /home/xqtrqexj/medicare-hms-app
+
+# For subsequent updates:
+cd /home/xqtrqexj/medicare-hms-app
+git fetch origin feat/ehr-doctor-consultation-pharmacy
+git checkout feat/ehr-doctor-consultation-pharmacy
+git pull origin feat/ehr-doctor-consultation-pharmacy
+```
+
+#### Method 2: Release Archive Upload (Fallback)
+If SSH/Git is unavailable, upload `medicare-hms-deploy.tar.gz` to `/home/xqtrqexj/medicare-hms-app` and extract:
+```bash
+mkdir -p /home/xqtrqexj/medicare-hms-app
+cd /home/xqtrqexj/medicare-hms-app
+tar -xzvf medicare-hms-deploy.tar.gz
+rm medicare-hms-deploy.tar.gz
+```
+
+### Step B.4: Configure Web Document Root & Preserve cPanel Configuration
+The public web document root is `/home/xqtrqexj/medicare.kennedycheroben.co.ke`.
+
+1. Copy required public assets and front controller from the application:
    ```bash
-   cd ~/medicare-hms
-   tar -xzvf medicare-hms-deploy.tar.gz
-   rm medicare-hms-deploy.tar.gz
+   # Copy public assets into public document root
+   cp -r /home/xqtrqexj/medicare-hms-app/public/admin-assets /home/xqtrqexj/medicare.kennedycheroben.co.ke/
+   cp -r /home/xqtrqexj/medicare-hms-app/public/assets /home/xqtrqexj/medicare.kennedycheroben.co.ke/
+   cp -r /home/xqtrqexj/medicare-hms-app/public/build /home/xqtrqexj/medicare.kennedycheroben.co.ke/
+   cp /home/xqtrqexj/medicare-hms-app/public/index.php /home/xqtrqexj/medicare.kennedycheroben.co.ke/index.php
+   cp /home/xqtrqexj/medicare-hms-app/public/favicon.ico /home/xqtrqexj/medicare.kennedycheroben.co.ke/
+   cp /home/xqtrqexj/medicare-hms-app/public/robots.txt /home/xqtrqexj/medicare.kennedycheroben.co.ke/
    ```
 
-### Step B.4: Configure Web Root & Front Controller
-Depending on whether cPanel allows custom document roots:
-
-#### Option 1: Custom Document Root (Subdomain or Primary Domain with Root Change)
-If cPanel allows setting document root, point the domain directly to:
-`/home/cpanelusername/medicare-hms/public`
-
-#### Option 2: Standard Locked `public_html` (Primary Shared Hosting Domain)
-If cPanel locks the primary domain to `public_html`:
-1. Move all contents of `~/medicare-hms/public/` into `~/public_html/`:
+2. **Preserve existing `.htaccess` & cPanel PHP configuration:**
+   Truehost cPanel automatically writes PHP version handlers into the document root `.htaccess` (e.g., `# php -- BEGIN cPanel-generated handler ... # php -- END cPanel-generated handler`).
+   **DO NOT overwrite `.htaccess` blindly.** If `/home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess` already exists:
+   - Keep the cPanel-generated PHP handler block at the top/bottom.
+   - Append the Laravel rewrite directives from `/home/xqtrqexj/medicare-hms-app/public/.htaccess` without removing cPanel configuration lines:
    ```bash
-   cp -r ~/medicare-hms/public/* ~/public_html/
-   cp ~/medicare-hms/public/.htaccess ~/public_html/
-   ```
-2. Edit `/home/cpanelusername/public_html/index.php` to reference the private application directory:
-   ```php
-   // Change:
-   require __DIR__.'/../vendor/autoload.php';
-   $app = require_once __DIR__.'/../bootstrap/app.php';
-
-   // To:
-   require __DIR__.'/../medicare-hms/vendor/autoload.php';
-   $app = require_once __DIR__.'/../medicare-hms/bootstrap/app.php';
+   if [ ! -f /home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess ]; then
+       cp /home/xqtrqexj/medicare-hms-app/public/.htaccess /home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess
+   else
+       # If .htaccess exists, verify mod_rewrite block is present or append it:
+       grep -q "RewriteEngine On" /home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess || cat /home/xqtrqexj/medicare-hms-app/public/.htaccess >> /home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess
+   fi
    ```
 
 ### Step B.5: Install Production Dependencies (Composer)
 Via SSH on cPanel:
 ```bash
-cd ~/medicare-hms
+cd /home/xqtrqexj/medicare-hms-app
 
-# Use the specific PHP binary matching the cPanel version (e.g. ea-php83)
-/usr/local/bin/ea-php83 /usr/local/bin/composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+# Run Composer using the active PHP version (PHP 8.3 / 8.4)
+composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
 ```
 
 ---
@@ -162,26 +188,28 @@ cd ~/medicare-hms
 ### Step C.1: Provision Production `.env`
 1. Copy template:
    ```bash
-   cd ~/medicare-hms
+   cd /home/xqtrqexj/medicare-hms-app
    cp .env.production.example .env
    chmod 600 .env
    ```
 2. Update `.env` with actual production values:
-   - `APP_URL=https://medicare.example.com`
-   - `DB_DATABASE=cpaneluser_medicare_prod`
-   - `DB_USERNAME=cpaneluser_medicare_user`
+   - `APP_URL=https://medicare.kennedycheroben.co.ke`
+   - `DB_DATABASE=xqtrqexj_medicare_prod`
+   - `DB_USERNAME=xqtrqexj_medicare_user`
    - `DB_PASSWORD=YOUR_RECORDED_DATABASE_PASSWORD`
    - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`
    - `HOSPITAL_DEMO_MODE=false`
 
 ### Step C.2: Generate Application Cryptographic Key
 ```bash
+cd /home/xqtrqexj/medicare-hms-app
 php artisan key:generate --force
 ```
 
 ### Step C.3: Run Database Migrations
 Run database migrations safely against the clean production database:
 ```bash
+cd /home/xqtrqexj/medicare-hms-app
 php artisan migrate --force
 ```
 
@@ -196,22 +224,19 @@ php artisan migrate --force
 ### Step C.4: Configure File Storage Symlink & Permissions
 Ensure writable permissions and create public media link:
 ```bash
-cd ~/medicare-hms
+cd /home/xqtrqexj/medicare-hms-app
 
-# Set permissions
+# Set permissions for Laravel runtime directories
 chmod -R 775 storage bootstrap/cache
 
-# Create storage symlink
-php artisan storage:link
-```
-If using Option 2 (public files in `public_html`), create the symlink manually:
-```bash
-ln -s ~/medicare-hms/storage/app/public ~/public_html/storage
+# Create storage symlink in the public document root
+ln -sfn /home/xqtrqexj/medicare-hms-app/storage/app/public /home/xqtrqexj/medicare.kennedycheroben.co.ke/storage
 ```
 
 ### Step C.5: Cache Configuration, Routes, and Views
 Optimize runtime performance on shared hosting:
 ```bash
+cd /home/xqtrqexj/medicare-hms-app
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -224,13 +249,13 @@ php artisan view:cache
 In cPanel **Cron Jobs**, add the standard Laravel scheduled task runner:
 
 ```cron
-* * * * * cd /home/cpanelusername/medicare-hms && /usr/local/bin/ea-php83 artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /home/xqtrqexj/medicare-hms-app && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ### Database Backup Cron Schedule:
 To automate daily database backups using the verified backup script:
 ```cron
-0 2 * * * cd /home/cpanelusername/medicare-hms && ./scripts/backup_database.sh >> storage/logs/backup.log 2>&1
+0 2 * * * cd /home/xqtrqexj/medicare-hms-app && ./scripts/backup_database.sh >> storage/logs/backup.log 2>&1
 ```
 
 ---
