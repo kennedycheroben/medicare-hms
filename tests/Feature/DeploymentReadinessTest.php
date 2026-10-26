@@ -70,8 +70,8 @@ class DeploymentReadinessTest extends TestCase
         // Mail configuration requires SMTP in production
         $this->assertEquals('smtp', $env['MAIL_MAILER'] ?? null, 'MAIL_MAILER must be smtp for real transactional delivery');
 
-        // Hospital operational mode
-        $this->assertEquals('false', strtolower($env['HOSPITAL_DEMO_MODE'] ?? ''), 'HOSPITAL_DEMO_MODE must be false in production');
+        // Hospital operational mode (must be true for demonstration deployment)
+        $this->assertEquals('true', strtolower($env['HOSPITAL_DEMO_MODE'] ?? ''), 'HOSPITAL_DEMO_MODE must be true for demonstration deployment');
     }
 
     public function test_env_example_and_production_example_configuration_parity(): void

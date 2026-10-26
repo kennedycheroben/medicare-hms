@@ -11,6 +11,16 @@
         :breadcrumbs="[['label' => 'Appointment Booking']]"
     />
 
+    <!-- Demonstration Notice -->
+    @if(config('hospital.is_demo'))
+        <div class="container mt-4">
+            <div class="alert alert-info border-0 rounded-3 small p-3 bg-info-subtle text-dark shadow-sm">
+                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                <strong>Demonstration Booking Notice:</strong> This appointment booking form is a demonstration of the MediCare Hospital Management System workflow. Submissions generate simulated confirmation reference codes for software evaluation and do not book physical medical visits.
+            </div>
+        </div>
+    @endif
+
     <section class="py-5 light-background">
         <div class="container" data-aos="fade-up">
 

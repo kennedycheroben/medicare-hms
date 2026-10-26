@@ -1,11 +1,11 @@
 # MediCare Hospital Management System — Truehost & cPanel Production Deployment Runbook
 
-- **Document Version:** 1.1.0
+- **Document Version:** 1.2.0
 - **Target Environment:** Truehost Cloud Shared Hosting / cPanel Linux Environment
 - **Stack:** PHP 8.3 / 8.4, MariaDB 10.4+ / MySQL 8.0, Apache/LiteSpeed, Laravel 13, Bootstrap, Blade
-- **Production Domain:** `medicare.kennedycheroben.co.ke`
+- **Production Domain:** `medicare.kennedycheroben.co.ke` (HMS Demonstration Platform)
 - **cPanel Username:** `xqtrqexj`
-- **Target Git Branch:** `feat/ehr-doctor-consultation-pharmacy`
+- **Target Git Branch:** `main` (Verified Release Baseline)
 - **Target Application Location:** `/home/xqtrqexj/medicare-hms-app` (strictly outside document root)
 - **Public Web Document Root:** `/home/xqtrqexj/medicare.kennedycheroben.co.ke`
 
@@ -61,11 +61,11 @@ Placing a complete Laravel application inside the public document root exposes `
 These steps are executed locally on the developer workstation or CI/CD runner prior to uploading anything to the hosting server.
 
 ### Step A.1: Verify Codebase, Git Cleanliness & Test Suite
-Ensure the local feature branch is up to date, passes all automated tests, and has a clean working tree:
+Ensure the local release branch is up to date, passes all automated tests, and has a clean working tree:
 ```bash
 # Verify branch
 git branch --show-current
-# Expected: feat/ehr-doctor-consultation-pharmacy
+# Expected: main (or dedicated verified release/audit branch)
 
 # Verify status
 git status
@@ -73,7 +73,7 @@ git status
 
 # Run full automated test suite against isolated test database
 php artisan test
-# Verification Gate: Must report 100% pass (152 tests, 1,242 assertions, 0 failures)
+# Verification Gate: Must report 100% pass (164 tests, 1,365 assertions, 0 failures)
 ```
 
 ### Step A.2: Compile Production Frontend Assets
@@ -125,14 +125,14 @@ Log in via SSH or cPanel Terminal:
 
 #### Method 1: Git-Based Deployment (Recommended)
 ```bash
-# Clone the verified feature branch directly outside document root
-git clone -b feat/ehr-doctor-consultation-pharmacy https://github.com/kennedycheroben/medicare-hms.git /home/xqtrqexj/medicare-hms-app
+# Clone the verified release branch directly outside document root
+git clone -b main https://github.com/kennedycheroben/medicare-hms.git /home/xqtrqexj/medicare-hms-app
 
 # For subsequent updates:
 cd /home/xqtrqexj/medicare-hms-app
-git fetch origin feat/ehr-doctor-consultation-pharmacy
-git checkout feat/ehr-doctor-consultation-pharmacy
-git pull origin feat/ehr-doctor-consultation-pharmacy
+git fetch origin main
+git checkout main
+git pull origin main
 ```
 
 #### Method 2: Release Archive Upload (Fallback)
@@ -198,7 +198,8 @@ composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
    - `DB_USERNAME=xqtrqexj_medicare_user`
    - `DB_PASSWORD=YOUR_RECORDED_DATABASE_PASSWORD`
    - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`
-   - `HOSPITAL_DEMO_MODE=false`
+   - `HOSPITAL_DEMO_MODE=true` (Keep `true` for demonstration deployment so software evaluation notices are shown)
+   - `HOSPITAL_ACCREDITATION_NOTICE="Demonstration Installation — Software Evaluation and Workflow Preview"`
 
 ### Step C.2: Generate Application Cryptographic Key
 ```bash
@@ -229,7 +230,13 @@ cd /home/xqtrqexj/medicare-hms-app
 # Set permissions for Laravel runtime directories
 chmod -R 775 storage bootstrap/cache
 
-# Create storage symlink in the public document root
+# Safely check and link public media directory:
+# Verify that destination is not already an existing physical directory before symlinking
+if [ -d "/home/xqtrqexj/medicare.kennedycheroben.co.ke/storage" ] && [ ! -L "/home/xqtrqexj/medicare.kennedycheroben.co.ke/storage" ]; then
+    echo "Backing up existing physical storage directory..."
+    mv /home/xqtrqexj/medicare.kennedycheroben.co.ke/storage /home/xqtrqexj/medicare.kennedycheroben.co.ke/storage_backup_$(date +%Y%m%d_%H%M%S)
+fi
+
 ln -sfn /home/xqtrqexj/medicare-hms-app/storage/app/public /home/xqtrqexj/medicare.kennedycheroben.co.ke/storage
 ```
 
@@ -266,8 +273,8 @@ Before releasing the system to hospital staff and patients, complete every verif
 
 | Check | Target URL / Flow | Expected Result | Verified By |
 | :--- | :--- | :--- | :--- |
-| **HTTPS & SSL** | `https://medicare.example.com` | Padlock valid, HTTP strictly redirects to HTTPS | |
-| **Public Homepage** | `/` | Departments, doctors, services render without console errors | |
+| **HTTPS & SSL** | `https://medicare.kennedycheroben.co.ke` | Padlock valid, HTTP strictly redirects to HTTPS | |
+| **Public Homepage** | `/` | Departments, doctors, services render without console errors; demo notice visible | |
 | **Appointment Booking** | `/appointments/book` | Booking submission succeeds, reference code generated, zero PII displayed | |
 | **Staff Login** | `/admin/login` | SuperAdmin logs in, session cookie flagged `Secure` and `HttpOnly` | |
 | **Role Authorization** | `/admin/consultations` | Doctor access permitted; Receptionist access returns HTTP 403 Forbidden | |
@@ -289,26 +296,29 @@ If a critical blocker is encountered during or after deployment:
 ### Fast Rollback (File Level):
 1. Put site in maintenance mode:
    ```bash
+   cd /home/xqtrqexj/medicare-hms-app
    php artisan down --secret="medicare-emergency-access"
    ```
 2. Revert codebase to previous verified release archive:
    ```bash
-   tar -xzvf medicare-hms-deploy-previous.tar.gz -C ~/medicare-hms
+   tar -xzvf medicare-hms-deploy-previous.tar.gz -C /home/xqtrqexj/medicare-hms-app
+   cd /home/xqtrqexj/medicare-hms-app
    php artisan config:clear
    php artisan route:clear
    php artisan view:clear
    ```
 3. Bring site back online:
    ```bash
+   cd /home/xqtrqexj/medicare-hms-app
    php artisan up
    ```
 
 ### Full Database Recovery:
 If data corruption occurs, restore the verified pre-deployment backup:
 ```bash
-cd ~/medicare-hms
+cd /home/xqtrqexj/medicare-hms-app
 ./scripts/restore_database.sh \
-    --file storage/app/backups/cpaneluser_medicare_prod_PRE_DEPLOY.sql.gz \
-    --target-db cpaneluser_medicare_prod \
+    --file storage/app/backups/xqtrqexj_medicare_prod_PRE_DEPLOY.sql.gz \
+    --target-db xqtrqexj_medicare_prod \
     --confirm
 ```

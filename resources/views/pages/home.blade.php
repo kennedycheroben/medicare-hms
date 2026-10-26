@@ -1,9 +1,18 @@
 @extends('layouts.public')
 
-@section('title', 'Accredited Healthcare & Medical Excellence')
+@section('title', config('hospital.is_demo') ? 'Healthcare Management Demonstration System' : 'Accredited Healthcare & Medical Excellence')
 @section('meta_description', 'MediCare Hospital is a leading healthcare facility offering 24/7 emergency response, specialized clinical departments, and world-class doctors.')
 
 @section('content')
+
+    @if(config('hospital.is_demo'))
+        <div class="container pt-5 mt-4">
+            <div class="alert alert-info border-0 rounded-3 small p-3 bg-info-subtle text-dark shadow-sm">
+                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                <strong>Software Demonstration Notice:</strong> This platform is a demonstration of the MediCare Hospital Management System (HMS) for software evaluation. Medical provider profiles, clinical departments, appointments, and contact numbers are sample demonstration records.
+            </div>
+        </div>
+    @endif
 
     <!-- Hero Section -->
     <section id="hero" class="hero section position-relative">
@@ -37,7 +46,7 @@
                 <div class="col-lg-7" data-aos="fade-up" data-aos-delay="150">
                     <div class="hero-content">
                         <span class="hero-badge">
-                            <span class="badge-dot"></span> Accredited Medical Center
+                            <span class="badge-dot"></span> {{ config('hospital.is_demo') ? 'HMS Demonstration Platform' : 'Accredited Medical Center' }}
                         </span>
 
                         <h1 class="hero-headline">Exceptional Healthcare, Centered on Every Patient</h1>
@@ -173,8 +182,8 @@
                     <div class="position-relative">
                         <img src="{{ asset('assets/img/health/consultation-3.webp') }}" alt="Medical Consultation" class="img-fluid rounded shadow-sm">
                         <div class="position-absolute bottom-0 end-0 bg-primary text-white p-3 rounded m-3 shadow d-none d-sm-block">
-                            <span class="h4 fw-bold mb-0 d-block">Level 1</span>
-                            <span class="small">Accredited Trauma Facility</span>
+                            <span class="h4 fw-bold mb-0 d-block">{{ config('hospital.is_demo') ? 'Level 1 Demo' : 'Level 1' }}</span>
+                            <span class="small">{{ config('hospital.is_demo') ? 'Trauma Simulation Facility' : 'Accredited Trauma Facility' }}</span>
                         </div>
                     </div>
                 </div>

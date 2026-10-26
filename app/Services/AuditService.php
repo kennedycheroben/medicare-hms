@@ -17,9 +17,14 @@ class AuditService
         'password',
         'password_confirmation',
         'token',
+        'access_token',
         'remember_token',
         'secret',
+        'api_key',
+        'authorization',
         'credit_card',
+        'cvv',
+        'pin',
         'mpesa_pin',
     ];
 

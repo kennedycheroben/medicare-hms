@@ -78,7 +78,7 @@
                                 <i class="bi bi-award text-primary fs-3 me-3"></i>
                                 <div>
                                     <span class="fw-bold d-block text-dark">{{ $doctor->qualifications }}</span>
-                                    <small class="text-muted">Accredited by the Medical Practitioners & Dentists Board</small>
+                                    <small class="text-muted">{{ config('hospital.is_demo') ? 'Sample Demonstration Board Certification' : 'Accredited by Medical Licensing Authority' }}</small>
                                 </div>
                             </div>
                         </div>

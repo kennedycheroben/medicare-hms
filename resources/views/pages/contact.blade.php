@@ -11,6 +11,16 @@
         :breadcrumbs="[['label' => 'Contact']]"
     />
 
+    <!-- Demonstration Notice -->
+    @if(config('hospital.is_demo'))
+        <div class="container mt-4">
+            <div class="alert alert-warning border-0 rounded-3 small p-3 bg-warning-subtle text-dark shadow-sm">
+                <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                <strong>Software Demonstration Notice:</strong> This website is an interactive demonstration of the MediCare Hospital Management System (HMS). The telephone numbers, emergency hotlines, and physical addresses displayed below are sample demonstration placeholders for software evaluation. <strong>In a real medical emergency, please contact your local national emergency services or visit the nearest healthcare facility immediately.</strong>
+            </div>
+        </div>
+    @endif
+
     <section class="py-5 light-background">
         <div class="container" data-aos="fade-up">
 
