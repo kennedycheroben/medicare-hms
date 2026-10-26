@@ -1,7 +1,7 @@
 @extends('layouts.public')
 
 @section('title', config('hospital.is_demo') ? 'Healthcare Management Demonstration System' : 'Accredited Healthcare & Medical Excellence')
-@section('meta_description', 'MediCare Hospital is a leading healthcare facility offering 24/7 emergency response, specialized clinical departments, and world-class doctors.')
+@section('meta_description', config('hospital.is_demo') ? 'Interactive demonstration of the MediCare Hospital Management System (HMS), showcasing clinical triage, appointments, and hospital operations.' : 'MediCare Hospital is a leading healthcare facility offering clinical response, specialized medical departments, and skilled doctors.')
 
 @section('content')
 
@@ -50,7 +50,7 @@
                         </span>
 
                         <h1 class="hero-headline">Exceptional Healthcare, Centered on Every Patient</h1>
-                        <p class="hero-subtext">Delivering advanced diagnostics, specialized clinical departments, and rapid 24/7 trauma triage. Our board-certified specialists provide patient-first medical care from admission through recovery.</p>
+                        <p class="hero-subtext">{{ config('hospital.is_demo') ? 'An enterprise healthcare platform demonstrating patient scheduling, clinical triage, digital health records, and pharmacy management with simulated data.' : 'Delivering advanced diagnostics, specialized clinical departments, and compassionate medical care. Our dedicated specialists provide patient-first medical support from admission through recovery.' }}</p>
 
                         <div class="action-row">
                             <a href="{{ route('appointments.create') }}" class="btn btn-solid">Schedule a Visit</a>
@@ -74,10 +74,17 @@
                                 </a>
                             </li>
                             <li>
-                                <a href="tel:{{ config('hospital.emergency_phone') }}" class="meta-link">
-                                    <i class="bi bi-telephone-inbound text-danger"></i>
-                                    <span>Emergency Line</span>
-                                </a>
+                                @if(config('hospital.is_demo'))
+                                    <a href="{{ route('guide') }}" class="meta-link">
+                                        <i class="bi bi-info-circle text-info"></i>
+                                        <span>System Guide &amp; Demo</span>
+                                    </a>
+                                @else
+                                    <a href="tel:{{ config('hospital.emergency_phone') }}" class="meta-link">
+                                        <i class="bi bi-telephone-inbound text-danger"></i>
+                                        <span>Emergency Line</span>
+                                    </a>
+                                @endif
                             </li>
                         </ul>
                     </div>
@@ -86,18 +93,33 @@
                 <div class="col-lg-5" data-aos="fade-up" data-aos-delay="250">
                     <div class="info-stack">
 
-                        <div class="info-card emergency-card">
-                            <div class="card-icon">
-                                <i class="bi bi-telephone-fill"></i>
+                        @if(config('hospital.is_demo'))
+                            <div class="info-card emergency-card" style="border-left: 4px solid #ffc107;">
+                                <div class="card-icon text-warning">
+                                    <i class="bi bi-shield-exclamation"></i>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="card-label text-warning fw-bold">Emergency Dispatch</span>
+                                    <span class="card-value fs-6">Call 999 / 112 (National)</span>
+                                </div>
+                                <a href="{{ route('contact') }}" class="card-action" aria-label="Emergency guidance and contacts">
+                                    <i class="bi bi-info-circle"></i>
+                                </a>
                             </div>
-                            <div class="card-meta">
-                                <span class="card-label">Emergency Desk</span>
-                                <span class="card-value">{{ config('hospital.emergency_phone') }}</span>
+                        @else
+                            <div class="info-card emergency-card">
+                                <div class="card-icon">
+                                    <i class="bi bi-telephone-fill"></i>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="card-label">Emergency Desk</span>
+                                    <span class="card-value">{{ config('hospital.emergency_phone') }}</span>
+                                </div>
+                                <a href="tel:{{ config('hospital.emergency_phone') }}" class="card-action" aria-label="Call emergency hotline">
+                                    <i class="bi bi-arrow-up-right"></i>
+                                </a>
                             </div>
-                            <a href="tel:{{ config('hospital.emergency_phone') }}" class="card-action" aria-label="Call emergency hotline">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </a>
-                        </div>
+                        @endif
 
                         <div class="info-card stats-card">
                             <div class="stat-cell">
@@ -106,15 +128,15 @@
                             </div>
                             <div class="stat-divider"></div>
                             <div class="stat-cell">
-                                <span class="stat-number">24/7</span>
-                                <span class="stat-label">Emergency Coverage</span>
+                                <span class="stat-number">{{ config('hospital.is_demo') ? 'Demo' : '24/7' }}</span>
+                                <span class="stat-label">{{ config('hospital.is_demo') ? 'Simulated Workflow' : 'Emergency Coverage' }}</span>
                             </div>
                         </div>
 
                         <div class="info-card review-card">
                             <div class="review-header">
-                                <span class="fw-bold text-primary"><i class="bi bi-shield-check me-1"></i>Clinical Governance</span>
-                                <span class="badge bg-light text-secondary border">Patient-First Care</span>
+                                <span class="fw-bold text-primary"><i class="bi bi-shield-check me-1"></i>{{ config('hospital.is_demo') ? 'Software Demonstration' : 'Clinical Governance' }}</span>
+                                <span class="badge bg-light text-secondary border">{{ config('hospital.is_demo') ? 'Simulated Records' : 'Patient-First Care' }}</span>
                             </div>
                             <p class="review-quote">"Compassionate nursing, multidisciplinary physician collaboration, and state-of-the-art diagnostics supporting inpatient and outpatient care."</p>
                             <div class="review-author">
@@ -353,7 +375,7 @@
                 <div>
                     <span class="text-primary text-uppercase fw-bold small">Clinical Specialists</span>
                     <h2 class="display-6 fw-bold" style="color: var(--heading-color);">Meet Our Doctors</h2>
-                    <p class="text-muted mb-0">Board-certified leaders across primary, acute, and specialized medicine.</p>
+                    <p class="text-muted mb-0">{{ config('hospital.is_demo') ? 'Sample specialist profiles illustrating doctor scheduling, credentials, and department assignment.' : 'Experienced leaders across primary, acute, and specialized medicine.' }}</p>
                 </div>
                 <div class="mt-3 mt-md-0">
                     <a href="{{ route('doctors') }}" class="btn btn-outline-primary">
@@ -411,18 +433,33 @@
     <!-- Call to Action Banner -->
     <section class="py-5 bg-primary text-white position-relative">
         <div class="container text-center py-4" data-aos="zoom-in">
-            <h2 class="display-6 fw-bold mb-3">Need Immediate Clinical Assistance?</h2>
-            <p class="lead mb-4 mx-auto" style="max-width: 750px;">
-                Our medical triage officers are ready 24/7. Whether booking a routine consultation or requesting immediate emergency ambulance dispatch, we are here for you.
-            </p>
-            <div class="d-flex flex-wrap justify-content-center gap-3">
-                <a href="{{ route('appointments.create') }}" class="btn btn-light btn-lg text-primary fw-bold px-4">
-                    <i class="bi bi-calendar2-check me-2"></i>Book an Appointment Online
-                </a>
-                <a href="tel:{{ config('hospital.emergency_phone') }}" class="btn btn-outline-light btn-lg px-4">
-                    <i class="bi bi-telephone-outbound me-2"></i>Call Emergency: {{ config('hospital.emergency_phone') }}
-                </a>
-            </div>
+            @if(config('hospital.is_demo'))
+                <h2 class="display-6 fw-bold mb-3">Explore MediCare HMS in Action</h2>
+                <p class="lead mb-4 mx-auto" style="max-width: 750px;">
+                    Test patient appointment scheduling, simulated consultation queues, and dispensary workflows using demo data. For real medical emergencies, please dial national dispatch (<strong>999 / 112</strong> in Kenya).
+                </p>
+                <div class="d-flex flex-wrap justify-content-center gap-3">
+                    <a href="{{ route('appointments.create') }}" class="btn btn-light btn-lg text-primary fw-bold px-4">
+                        <i class="bi bi-calendar2-check me-2"></i>Simulate Appointment Booking
+                    </a>
+                    <a href="{{ route('guide') }}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-journal-text me-2"></i>Read User Workbook
+                    </a>
+                </div>
+            @else
+                <h2 class="display-6 fw-bold mb-3">Need Immediate Clinical Assistance?</h2>
+                <p class="lead mb-4 mx-auto" style="max-width: 750px;">
+                    Our medical triage officers are ready 24/7. Whether booking a routine consultation or requesting immediate emergency ambulance dispatch, we are here for you.
+                </p>
+                <div class="d-flex flex-wrap justify-content-center gap-3">
+                    <a href="{{ route('appointments.create') }}" class="btn btn-light btn-lg text-primary fw-bold px-4">
+                        <i class="bi bi-calendar2-check me-2"></i>Book an Appointment Online
+                    </a>
+                    <a href="tel:{{ config('hospital.emergency_phone') }}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-telephone-outbound me-2"></i>Call Emergency: {{ config('hospital.emergency_phone') }}
+                    </a>
+                </div>
+            @endif
         </div>
     </section>
 

@@ -40,25 +40,35 @@
                     <div class="card h-100 border-0 shadow-sm p-4 rounded-4 bg-white text-center">
                         <div class="fs-1 text-danger mb-3"><i class="bi bi-telephone-inbound-fill"></i></div>
                         <h5 class="fw-bold mb-2 text-danger">Emergency Hotline</h5>
-                        <p class="text-muted small mb-2">
-                            For urgent medical & trauma dispatch:
-                        </p>
-                        <a href="tel:{{ config('hospital.emergency_phone') }}" class="h6 fw-bold text-danger text-decoration-none">
-                            {{ config('hospital.emergency_phone') }}
-                        </a>
+                        @if(config('hospital.is_demo'))
+                            <p class="text-muted small mb-2">
+                                Real medical &amp; trauma emergencies:
+                            </p>
+                            <span class="h6 fw-bold text-danger d-block mb-1">
+                                Call 999 / 112 (National)
+                            </span>
+                            <small class="text-muted d-block">Demo site — no live dispatch</small>
+                        @else
+                            <p class="text-muted small mb-2">
+                                For urgent medical &amp; trauma dispatch:
+                            </p>
+                            <a href="tel:{{ config('hospital.emergency_phone') }}" class="h6 fw-bold text-danger text-decoration-none">
+                                {{ config('hospital.emergency_phone') }}
+                            </a>
+                        @endif
                     </div>
                 </div>
 
                 <div class="col-lg-3 col-md-6">
                     <div class="card h-100 border-0 shadow-sm p-4 rounded-4 bg-white text-center">
                         <div class="fs-1 text-primary mb-3"><i class="bi bi-telephone"></i></div>
-                        <h5 class="fw-bold mb-2">General Switchboard</h5>
+                        <h5 class="fw-bold mb-2">{{ config('hospital.is_demo') ? 'Sample Switchboard' : 'General Switchboard' }}</h5>
                         <p class="text-muted small mb-2">
-                            Consultation bookings & inquiries:
+                            {{ config('hospital.is_demo') ? 'Simulated reception desk:' : 'Consultation bookings & inquiries:' }}
                         </p>
-                        <a href="tel:{{ config('hospital.phone') }}" class="h6 fw-bold text-primary text-decoration-none">
+                        <span class="h6 fw-bold text-primary d-block">
                             {{ config('hospital.phone') }}
-                        </a>
+                        </span>
                     </div>
                 </div>
 
@@ -204,9 +214,14 @@
 
                     <!-- Operating Hours Card -->
                     <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
-                        <h5 class="fw-bold mb-3" style="color: var(--heading-color);">
-                            <i class="bi bi-clock-history text-primary me-2"></i>Operating Hours
-                        </h5>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0" style="color: var(--heading-color);">
+                                <i class="bi bi-clock-history text-primary me-2"></i>Operating Hours
+                            </h5>
+                            @if(config('hospital.is_demo'))
+                                <span class="badge bg-warning-subtle text-dark border">Sample Schedule</span>
+                            @endif
+                        </div>
                         <ul class="list-unstyled small mb-0">
                             <li class="py-2 border-bottom d-flex justify-content-between">
                                 <strong>Emergency & Trauma Center:</strong>
@@ -232,12 +247,21 @@
                     </div>
 
                     <!-- Ambulance Bay Notice -->
-                    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-light">
-                        <h5 class="fw-bold mb-2 text-danger"><i class="bi bi-truck-front-fill me-2"></i>Emergency Ambulance Bay</h5>
-                        <p class="text-muted small mb-0">
-                            Emergency ambulance vehicles enter through Gate 2 off Boulevard Avenue for direct, level-grade patient transfer into the resuscitation suites.
-                        </p>
-                    </div>
+                    @if(config('hospital.is_demo'))
+                        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-warning-subtle border-warning">
+                            <h5 class="fw-bold mb-2 text-dark"><i class="bi bi-shield-exclamation text-warning me-2"></i>Emergency Dispatch Guidance</h5>
+                            <p class="text-muted small mb-0">
+                                This installation is a software demonstration environment. For life-threatening emergencies, proceed directly to the nearest physical emergency room or dial national emergency response at <strong>999 / 112</strong>.
+                            </p>
+                        </div>
+                    @else
+                        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-light">
+                            <h5 class="fw-bold mb-2 text-danger"><i class="bi bi-truck-front-fill me-2"></i>Emergency Ambulance Bay</h5>
+                            <p class="text-muted small mb-0">
+                                Emergency ambulance vehicles enter through Gate 2 off Boulevard Avenue for direct, level-grade patient transfer into the resuscitation suites.
+                            </p>
+                        </div>
+                    @endif
 
                     <!-- Campus Location Card -->
                     <div class="card border-0 shadow-sm rounded-4 p-4 bg-white text-center">

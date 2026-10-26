@@ -54,14 +54,28 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="d-flex flex-wrap gap-3">
-                            <a href="tel:{{ config('hospital.emergency_phone') }}" class="btn btn-danger btn-lg px-4">
-                                <i class="bi bi-telephone-fill me-2"></i>Emergency Hotline: {{ config('hospital.emergency_phone') }}
-                            </a>
-                            <a href="{{ route('appointments.create') }}" class="btn btn-outline-light btn-lg px-4">
-                                Non-Emergency Booking
-                            </a>
-                        </div>
+                        @if(config('hospital.is_demo'))
+                            <div class="alert alert-warning py-2 px-3 mb-3 d-inline-block small text-dark border-warning">
+                                <i class="bi bi-shield-exclamation text-warning me-1"></i><strong>Emergency Notice:</strong> In real emergencies, call <strong>999 / 112</strong> (National Dispatch in Kenya).
+                            </div>
+                            <div class="d-flex flex-wrap gap-3">
+                                <a href="{{ route('appointments.create') }}" class="btn btn-primary btn-lg px-4">
+                                    <i class="bi bi-calendar2-check me-2"></i>Simulate Department Booking
+                                </a>
+                                <a href="{{ route('contact') }}" class="btn btn-outline-light btn-lg px-4">
+                                    <i class="bi bi-info-circle me-2"></i>Demo Contacts
+                                </a>
+                            </div>
+                        @else
+                            <div class="d-flex flex-wrap gap-3">
+                                <a href="tel:{{ config('hospital.emergency_phone') }}" class="btn btn-danger btn-lg px-4">
+                                    <i class="bi bi-telephone-fill me-2"></i>Emergency Hotline: {{ config('hospital.emergency_phone') }}
+                                </a>
+                                <a href="{{ route('appointments.create') }}" class="btn btn-outline-light btn-lg px-4">
+                                    Non-Emergency Booking
+                                </a>
+                            </div>
+                        @endif
                     </div>
                     <div class="col-lg-5 text-center p-4">
                         <img src="{{ asset('assets/img/health/emergency-3.webp') }}" alt="Emergency Care" class="img-fluid rounded-3 shadow">

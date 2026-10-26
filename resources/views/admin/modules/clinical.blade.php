@@ -6,7 +6,7 @@
 <div class="container-fluid p-0">
     <div class="mb-4">
         <h1 class="h3 fw-bold text-dark mb-1">Doctor Consultation Desk & Electronic Health Records</h1>
-        <p class="text-muted small mb-0">Authorized access restricted to Board-Certified Doctors and Clinical Supervisors.</p>
+        <p class="text-muted small mb-0">Authorized access restricted to Clinical Doctors and Medical Supervisors.</p>
     </div>
 
     <div class="card border-0 shadow-sm rounded-4 p-4">

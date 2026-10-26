@@ -11,6 +11,16 @@
         :breadcrumbs="[['label' => 'Privacy Policy']]"
     />
 
+    <!-- Demonstration Notice -->
+    @if(config('hospital.is_demo'))
+        <div class="container mt-4" style="max-width: 900px;">
+            <div class="alert alert-info border-0 rounded-3 small p-3 bg-info-subtle text-dark shadow-sm">
+                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                <strong>Demonstration Privacy Notice:</strong> This privacy policy describes the privacy architecture and KDPA compliance capabilities designed into the MediCare HMS platform. Production deployments configure facility-specific data protection credentials.
+            </div>
+        </div>
+    @endif
+
     <section class="py-5 bg-white">
         <div class="container" style="max-width: 900px;">
 

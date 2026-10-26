@@ -11,6 +11,16 @@
         :breadcrumbs="[['label' => 'Patient Information']]"
     />
 
+    <!-- Demonstration Notice -->
+    @if(config('hospital.is_demo'))
+        <div class="container mt-4">
+            <div class="alert alert-info border-0 rounded-3 small p-3 bg-info-subtle text-dark shadow-sm">
+                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                <strong>Demonstration Notice:</strong> Patient admission checklists, visiting hours, and policies shown below illustrate hospital communication guidelines within MediCare HMS. For real medical emergencies, call national emergency dispatch (<strong>999 / 112</strong> in Kenya).
+            </div>
+        </div>
+    @endif
+
     <!-- Quick Navigation Anchor Pills -->
     <section class="py-3 bg-white border-bottom sticky-top" style="top: 80px; z-index: 990;">
         <div class="container">

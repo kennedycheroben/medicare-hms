@@ -11,6 +11,16 @@
         :breadcrumbs="[['label' => 'Terms of Service']]"
     />
 
+    <!-- Demonstration Notice -->
+    @if(config('hospital.is_demo'))
+        <div class="container mt-4" style="max-width: 900px;">
+            <div class="alert alert-info border-0 rounded-3 small p-3 bg-info-subtle text-dark shadow-sm">
+                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                <strong>Demonstration Terms Notice:</strong> These terms of service reflect operational guidelines modeled in the MediCare HMS software. Facility-specific contractual terms and liability provisions are established by deploying organizations.
+            </div>
+        </div>
+    @endif
+
     <section class="py-5 bg-white">
         <div class="container" style="max-width: 900px;">
 
@@ -20,9 +30,15 @@
                     <i class="bi bi-exclamation-triangle-fill text-danger fs-3"></i>
                     <div>
                         <h5 class="fw-bold mb-1 text-danger">Emergency Care Notice</h5>
-                        <p class="mb-0 text-dark small">
-                            This website, public booking interface, and the Patient Portal are <strong>NOT for immediate life-threatening medical emergencies</strong>. If you or someone in your care is experiencing severe chest pain, heavy bleeding, difficulty breathing, acute trauma, or loss of consciousness, immediately call our 24/7 Emergency Line at <strong>{{ config('hospital.emergency_phone', '+254 700 911 911') }}</strong> or report directly to our Emergency Department.
-                        </p>
+                        @if(config('hospital.is_demo'))
+                            <p class="mb-0 text-dark small">
+                                This website, public booking interface, and Patient Portal are an <strong>interactive software demonstration</strong> and are <strong>NOT for actual medical emergencies</strong>. If you or someone in your care is experiencing severe chest pain, heavy bleeding, difficulty breathing, acute trauma, or loss of consciousness, immediately call national emergency dispatch (<strong>999 / 112</strong> in Kenya) or proceed to the nearest physical hospital emergency department. This platform does not operate an active medical dispatch.
+                            </p>
+                        @else
+                            <p class="mb-0 text-dark small">
+                                This website, public booking interface, and the Patient Portal are <strong>NOT for immediate life-threatening medical emergencies</strong>. If you or someone in your care is experiencing severe chest pain, heavy bleeding, difficulty breathing, acute trauma, or loss of consciousness, immediately call our 24/7 Emergency Line at <strong>{{ config('hospital.emergency_phone', '+254 700 911 911') }}</strong> or report directly to our Emergency Department.
+                            </p>
+                        @endif
                     </div>
                 </div>
             </div>

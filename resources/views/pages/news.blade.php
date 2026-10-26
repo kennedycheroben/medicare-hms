@@ -11,6 +11,16 @@
         :breadcrumbs="[['label' => 'News & Health Advisories']]"
     />
 
+    <!-- Demonstration Notice -->
+    @if(config('hospital.is_demo'))
+        <div class="container mt-4">
+            <div class="alert alert-info border-0 rounded-3 small p-3 bg-info-subtle text-dark shadow-sm">
+                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                <strong>Demonstration Notice:</strong> Articles and health announcements published here illustrate the content management capabilities of MediCare HMS.
+            </div>
+        </div>
+    @endif
+
     <section class="py-5 light-background">
         <div class="container">
             @if ($articles->isEmpty())

@@ -56,7 +56,7 @@
                         <div class="card border-0 shadow-sm rounded-4 p-4 h-100 border-top border-primary border-3">
                             <h5 class="fw-bold text-primary mb-2"><i class="bi bi-person-heart me-2"></i>For Patients</h5>
                             <ul class="text-secondary small ps-3 mb-0">
-                                <li class="mb-2">Search accredited medical specialists and clinic schedules.</li>
+                                <li class="mb-2">Search clinical specialists and clinic schedules.</li>
                                 <li class="mb-2">Book outpatient consultation requests online.</li>
                                 <li class="mb-2">Activate private Patient Portal accounts via secure email links.</li>
                                 <li class="mb-0">Access visit history, upcoming appointments, and medication prescriptions.</li>

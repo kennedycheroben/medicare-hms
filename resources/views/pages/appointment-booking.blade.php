@@ -7,7 +7,7 @@
 
     <x-page-header
         title="Schedule An Appointment"
-        subtitle="Submit a Priority Consultation Request with Our Board-Certified Medical Specialists"
+        subtitle="{{ config('hospital.is_demo') ? 'Submit a Consultation Request to Test Clinical Scheduling Workflows' : 'Submit a Priority Consultation Request with Our Medical Specialists' }}"
         :breadcrumbs="[['label' => 'Appointment Booking']]"
     />
 
@@ -66,12 +66,21 @@
                     <i class="bi bi-exclamation-octagon-fill text-danger fs-2 me-3 flex-shrink-0"></i>
                     <div>
                         <h5 class="fw-bold text-danger mb-1">Emergency Medical Notice</h5>
-                        <p class="mb-2 text-dark small leading-relaxed">
-                            If you or the patient are experiencing <strong>chest pain, difficulty breathing, acute trauma, severe bleeding, or signs of stroke</strong>, do not wait for an online appointment request. Call our 24/7 Emergency Line immediately or proceed straight to our emergency triage bay:
-                        </p>
-                        <a href="tel:{{ config('hospital.emergency_phone') }}" class="btn btn-sm btn-danger fw-bold">
-                            <i class="bi bi-telephone-fill me-1"></i>Emergency Care: {{ config('hospital.emergency_phone') }}
-                        </a>
+                        @if(config('hospital.is_demo'))
+                            <p class="mb-2 text-dark small leading-relaxed">
+                                If you or the patient are experiencing <strong>chest pain, difficulty breathing, acute trauma, severe bleeding, or signs of stroke</strong>, do not wait for an online appointment form. Call <strong>999 / 112</strong> (National Emergency Dispatch in Kenya) immediately or proceed straight to the nearest hospital emergency room. This website is a demonstration and does not dispatch emergency services.
+                            </p>
+                            <span class="badge bg-warning text-dark py-2 px-3 fw-bold">
+                                <i class="bi bi-shield-exclamation me-1"></i>Real Emergencies: Call 999 / 112
+                            </span>
+                        @else
+                            <p class="mb-2 text-dark small leading-relaxed">
+                                If you or the patient are experiencing <strong>chest pain, difficulty breathing, acute trauma, severe bleeding, or signs of stroke</strong>, do not wait for an online appointment request. Call our 24/7 Emergency Line immediately or proceed straight to our emergency triage bay:
+                            </p>
+                            <a href="tel:{{ config('hospital.emergency_phone') }}" class="btn btn-sm btn-danger fw-bold">
+                                <i class="bi bi-telephone-fill me-1"></i>Emergency Care: {{ config('hospital.emergency_phone') }}
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -84,9 +93,9 @@
                             <span class="badge bg-primary-subtle text-primary border mb-2 px-3 py-2 text-uppercase fw-bold">
                                 Consultation Booking Request
                             </span>
-                            <h3 class="fw-bold mb-1" style="color: var(--heading-color);">Online Appointment Reservation</h3>
+                            <h3 class="fw-bold mb-1" style="color: var(--heading-color);">{{ config('hospital.is_demo') ? 'Simulated Appointment Request' : 'Online Appointment Reservation' }}</h3>
                             <p class="text-muted small mb-0">
-                                Complete this form to submit your appointment request into our clinic coordination system.
+                                {{ config('hospital.is_demo') ? 'Complete this form to test our clinic coordination workflow. Submitted requests populate the administrative demonstration queue.' : 'Complete this form to submit your appointment request into our clinic coordination system.' }}
                             </p>
                         </div>
 
@@ -94,7 +103,11 @@
                         <div class="alert alert-info border-0 rounded-3 p-3 mb-4 d-flex align-items-start bg-info-subtle">
                             <i class="bi bi-info-circle-fill text-info fs-4 me-3 flex-shrink-0"></i>
                             <div class="small text-dark">
-                                <strong>Important Appointment Policy:</strong> Submitting this form enters your request into our hospital queue. <em>It does not constitute a guaranteed or confirmed appointment until our triage coordinator contacts you via phone or SMS</em> to verify physician availability and officially confirm your slot.
+                                @if(config('hospital.is_demo'))
+                                    <strong>Demonstration Workflow:</strong> Submitting this form creates a simulated appointment record in the system for testing queue management and patient communication. <em>No real doctor appointment is scheduled and no physical consultation slot will be reserved.</em>
+                                @else
+                                    <strong>Important Appointment Policy:</strong> Submitting this form enters your request into our hospital queue. <em>It does not constitute a guaranteed or confirmed appointment until our triage coordinator contacts you via phone or SMS</em> to verify physician availability and officially confirm your slot.
+                                @endif
                             </div>
                         </div>
 
@@ -197,7 +210,7 @@
                                         Preferred Doctor <span class="text-muted">(Optional)</span>
                                     </label>
                                     <select class="form-select @error('doctor_id') is-invalid @enderror" id="doctor_id" name="doctor_id">
-                                        <option value="">Any Available Board-Certified Doctor</option>
+                                        <option value="">{{ config('hospital.is_demo') ? 'Any Available Specialist (Simulated)' : 'Any Available Specialist Physician' }}</option>
                                         @foreach ($doctors as $doc)
                                             <option value="{{ $doc->id }}" data-department="{{ $doc->department_id }}" {{ (old('doctor_id', $selectedDoctorId) == $doc->id) ? 'selected' : '' }}>
                                                 {{ $doc->name }} ({{ $doc->specialty }})

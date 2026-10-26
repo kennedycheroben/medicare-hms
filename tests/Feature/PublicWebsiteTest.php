@@ -80,7 +80,7 @@ class PublicWebsiteTest extends TestCase
         $this->get(route('appointments.create'))
             ->assertStatus(200)
             ->assertSee('Schedule An Appointment')
-            ->assertSee('Important Appointment Policy:');
+            ->assertSee(config('hospital.is_demo') ? 'Demonstration Workflow:' : 'Important Appointment Policy:');
 
         // 11. Contact
         $this->get(route('contact'))
@@ -363,7 +363,7 @@ class PublicWebsiteTest extends TestCase
         $response->assertStatus(200)
             ->assertSee('MediCare')
             ->assertSee('Book Appointment')
-            ->assertSee('Emergency Line')
+            ->assertSee(config('hospital.is_demo') ? 'Emergency Care' : 'Emergency Line')
             ->assertSee('Quick Links');
     }
 

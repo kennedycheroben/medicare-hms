@@ -1,13 +1,13 @@
 @extends('layouts.public')
 
 @section('title', 'Specialist Directory & Vetted Doctors')
-@section('meta_description', 'Search and filter board-certified physicians, surgeons, and medical consultants at MediCare Hospital. Book consultations online.')
+@section('meta_description', config('hospital.is_demo') ? 'Browse sample specialist profiles and clinic consultation schedules in the MediCare HMS demonstration.' : 'Search and filter clinical specialists, surgeons, and medical consultants at MediCare Hospital. Book consultations online.')
 
 @section('content')
 
     <x-page-header
         title="Find a Doctor"
-        subtitle="Search Our Vetted Directory of Board-Certified Specialists and Healthcare Practitioners"
+        subtitle="{{ config('hospital.is_demo') ? 'Browse Sample Specialist Profiles and Clinic Consultation Schedules' : 'Search Our Directory of Clinical Specialists and Healthcare Practitioners' }}"
         :breadcrumbs="[['label' => 'Doctors']]"
     />
 

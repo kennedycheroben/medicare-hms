@@ -295,7 +295,11 @@ class StaffAppointmentManagementAndLocalizationTest extends TestCase
         $homeResponse = $this->get(route('home'));
         $homeResponse->assertOk();
         $homeResponse->assertSee(config('hospital.phone'));
-        $homeResponse->assertSee(config('hospital.emergency_phone'));
+        if (config('hospital.is_demo')) {
+            $homeResponse->assertSee('999 / 112');
+        } else {
+            $homeResponse->assertSee(config('hospital.emergency_phone'));
+        }
         $homeResponse->assertSee('Nairobi, Kenya');
 
         // 3. Admin initial assessment heading displays updated clinical terminology

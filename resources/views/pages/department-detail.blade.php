@@ -14,6 +14,16 @@
         ]"
     />
 
+    <!-- Demonstration Notice -->
+    @if(config('hospital.is_demo'))
+        <div class="container mt-4">
+            <div class="alert alert-info border-0 rounded-3 small p-3 bg-info-subtle text-dark shadow-sm">
+                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                <strong>Demonstration Department Notice:</strong> Departmental details, staffing rosters, and telephone contacts shown are sample demonstration data for software evaluation.
+            </div>
+        </div>
+    @endif
+
     <section class="py-5">
         <div class="container" data-aos="fade-up">
             <div class="row g-5">
@@ -108,7 +118,7 @@
                         <a href="{{ route('appointments.create', ['dept' => $department->id]) }}" class="btn btn-light fw-bold text-primary w-100 mb-2">
                             <i class="bi bi-calendar-check me-1"></i>Book Consultation
                         </a>
-                        <small class="d-block text-center text-white-50" style="font-size: 0.75rem;">Fast online confirmation response</small>
+                        <small class="d-block text-center text-white-50" style="font-size: 0.75rem;">{{ config('hospital.is_demo') ? 'Simulated appointment workflow' : 'Fast online confirmation response' }}</small>
                     </div>
 
                     <!-- Department Contact Card -->
@@ -132,8 +142,13 @@
                             <li class="mb-0 d-flex align-items-center">
                                 <i class="bi bi-shield-exclamation text-danger me-2 fs-5"></i>
                                 <div>
-                                    <strong>Emergency Line:</strong>
-                                    <span class="d-block text-danger fw-bold">{{ $department->emergency_contact ?? config('hospital.emergency_phone') }}</span>
+                                    <strong>Emergency Guidance:</strong>
+                                    @if(config('hospital.is_demo'))
+                                        <span class="d-block text-warning fw-bold">Call 999 / 112 (National Dispatch)</span>
+                                        <small class="text-muted" style="font-size: 0.75rem;">Simulated department profile</small>
+                                    @else
+                                        <span class="d-block text-danger fw-bold">{{ $department->emergency_contact ?? config('hospital.emergency_phone') }}</span>
+                                    @endif
                                 </div>
                             </li>
                         </ul>

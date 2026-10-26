@@ -8,8 +8,8 @@
         document.documentElement.classList.remove('no-js');
         document.documentElement.classList.add('js');
     </script>
-    <title>@yield('title', 'Accredited Medical Center & Healthcare Services') | {{ config('app.name', 'MediCare Hospital') }}</title>
-    <meta name="description" content="@yield('meta_description', 'MediCare Hospital provides 24/7 emergency care, specialized clinical departments, world-class board-certified physicians, and compassionate patient-centered healthcare.')">
+    <title>@yield('title', config('hospital.is_demo') ? 'Hospital Management System Software Demonstration' : 'Accredited Medical Center & Healthcare Services') | {{ config('app.name', 'MediCare Hospital') }}</title>
+    <meta name="description" content="@yield('meta_description', config('hospital.is_demo') ? 'Interactive demonstration of the MediCare Hospital Management System (HMS), showcasing outpatient triage, EHR, consultations, and pharmacy workflows.' : 'MediCare Hospital provides clinical healthcare services, specialized medical departments, and compassionate patient-centered healthcare.')">
     <meta name="keywords" content="hospital, healthcare, medical clinic, cardiology, neurology, pediatrics, surgery, emergency care, appointments, doctors">
 
     <!-- Favicons -->
@@ -98,7 +98,11 @@
                         <div class="footer-contact pt-2 small">
                             <p class="mb-1"><i class="bi bi-geo-alt me-2 text-info"></i>{{ config('hospital.address') }}</p>
                             <p class="mb-1"><i class="bi bi-telephone me-2 text-info"></i>General Enquiries: {{ config('hospital.phone') }}</p>
-                            <p class="mb-1"><i class="bi bi-shield-exclamation me-2 text-danger"></i><strong>Emergency Line:</strong> <span class="text-info fw-bold">{{ config('hospital.emergency_phone') }}</span></p>
+                            @if(config('hospital.is_demo'))
+                                <p class="mb-1"><i class="bi bi-shield-exclamation me-2 text-warning"></i><strong>Emergency Care:</strong> <span class="text-warning fw-bold">Call 999 / 112 (National Dispatch)</span></p>
+                            @else
+                                <p class="mb-1"><i class="bi bi-shield-exclamation me-2 text-danger"></i><strong>Emergency Line:</strong> <span class="text-info fw-bold">{{ config('hospital.emergency_phone') }}</span></p>
+                            @endif
                             <p class="mb-0"><i class="bi bi-envelope me-2 text-info"></i>{{ config('hospital.email') }}</p>
                         </div>
                     </div>
@@ -142,8 +146,12 @@
                             <li class="mb-2"><a href="{{ route('health') }}" class="text-muted text-decoration-none"><i class="bi bi-heart-pulse-fill me-1"></i>System Status</a></li>
                         </ul>
                         <div class="mt-3 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1);">
-                            <span class="text-uppercase text-info small fw-bold d-block mb-1">Emergency Services</span>
-                            <span class="text-white small">For urgent trauma or acute medical care, call <strong class="text-info">{{ config('hospital.emergency_phone') }}</strong> or visit the hospital emergency department directly.</span>
+                            <span class="text-uppercase text-info small fw-bold d-block mb-1">Emergency Guidance</span>
+                            @if(config('hospital.is_demo'))
+                                <span class="text-white small">For real life-threatening emergencies, call national emergency response (<strong>999 / 112</strong> in Kenya) or visit the nearest hospital emergency room. This demo site does not operate an active medical dispatch.</span>
+                            @else
+                                <span class="text-white small">For urgent trauma or acute medical care, call <strong class="text-info">{{ config('hospital.emergency_phone') }}</strong> or visit the hospital emergency department directly.</span>
+                            @endif
                         </div>
                     </div>
 

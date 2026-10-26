@@ -147,7 +147,7 @@
                         <img src="{{ asset('assets/img/health/staff-3.webp') }}" alt="Chief Medical Officer" class="rounded-circle mx-auto mb-3" style="width: 120px; height: 120px; object-fit: cover;">
                         <h5 class="fw-bold mb-1">Dr. Marcus Vance, MD, FACC</h5>
                         <span class="text-primary small mb-3 d-block">Chief Medical Officer</span>
-                        <p class="text-muted small">Board-certified cardiologist leading clinical governance, surgical protocol quality, and physician credentialing.</p>
+                        <p class="text-muted small">{{ config('hospital.is_demo') ? 'Cardiologist profile illustrating clinical governance, care quality, and medical supervision.' : 'Cardiologist leading clinical governance, surgical protocol quality, and medical supervision.' }}</p>
                     </div>
                 </div>
 

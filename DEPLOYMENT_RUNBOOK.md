@@ -144,33 +144,91 @@ tar -xzvf medicare-hms-deploy.tar.gz
 rm medicare-hms-deploy.tar.gz
 ```
 
-### Step B.4: Configure Web Document Root & Preserve cPanel Configuration
+### Step B.4: Configure Web Document Root, Stage Assets & Preserve cPanel Configuration
 The public web document root is `/home/xqtrqexj/medicare.kennedycheroben.co.ke`.
 
-1. Copy required public assets and front controller from the application:
-   ```bash
-   # Copy public assets into public document root
-   cp -r /home/xqtrqexj/medicare-hms-app/public/admin-assets /home/xqtrqexj/medicare.kennedycheroben.co.ke/
-   cp -r /home/xqtrqexj/medicare-hms-app/public/assets /home/xqtrqexj/medicare.kennedycheroben.co.ke/
-   cp -r /home/xqtrqexj/medicare-hms-app/public/build /home/xqtrqexj/medicare.kennedycheroben.co.ke/
-   cp /home/xqtrqexj/medicare-hms-app/public/index.php /home/xqtrqexj/medicare.kennedycheroben.co.ke/index.php
-   cp /home/xqtrqexj/medicare-hms-app/public/favicon.ico /home/xqtrqexj/medicare.kennedycheroben.co.ke/
-   cp /home/xqtrqexj/medicare-hms-app/public/robots.txt /home/xqtrqexj/medicare.kennedycheroben.co.ke/
-   ```
+> [!WARNING]
+> **Safety Protocol:** Do not run blind `cp -r` commands directly into the production web root. cPanel generates server-specific PHP handler configurations, and existing custom or staging files can be lost. Always verify paths, create a timestamped backup first, stage updates, and carefully preserve existing `.htaccess` directives.
 
-2. **Preserve existing `.htaccess` & cPanel PHP configuration:**
-   Truehost cPanel automatically writes PHP version handlers into the document root `.htaccess` (e.g., `# php -- BEGIN cPanel-generated handler ... # php -- END cPanel-generated handler`).
-   **DO NOT overwrite `.htaccess` blindly.** If `/home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess` already exists:
-   - Keep the cPanel-generated PHP handler block at the top/bottom.
-   - Append the Laravel rewrite directives from `/home/xqtrqexj/medicare-hms-app/public/.htaccess` without removing cPanel configuration lines:
-   ```bash
-   if [ ! -f /home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess ]; then
-       cp /home/xqtrqexj/medicare-hms-app/public/.htaccess /home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess
-   else
-       # If .htaccess exists, verify mod_rewrite block is present or append it:
-       grep -q "RewriteEngine On" /home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess || cat /home/xqtrqexj/medicare-hms-app/public/.htaccess >> /home/xqtrqexj/medicare.kennedycheroben.co.ke/.htaccess
-   fi
-   ```
+Run the following defensive synchronization procedure via SSH:
+
+```bash
+set -euo pipefail
+
+APP_DIR="/home/xqtrqexj/medicare-hms-app"
+WEB_ROOT="/home/xqtrqexj/medicare.kennedycheroben.co.ke"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/home/xqtrqexj/backup_webroot_${TIMESTAMP}"
+STAGING_DIR="/home/xqtrqexj/staging_webroot_${TIMESTAMP}"
+
+# 1. Pre-flight sanity checks
+if [ ! -d "${APP_DIR}/public" ]; then
+    echo "ERROR: Source directory ${APP_DIR}/public does not exist. Aborting." >&2
+    exit 1
+fi
+
+if [ ! -d "${WEB_ROOT}" ]; then
+    echo "Creating destination web root directory ${WEB_ROOT}..."
+    mkdir -p "${WEB_ROOT}"
+fi
+
+# 2. Defensive Backup: If web root already contains files, back them up before making any changes
+if [ "$(ls -A "${WEB_ROOT}" 2>/dev/null)" ]; then
+    echo "Existing files detected in ${WEB_ROOT}. Creating full archive backup at ${BACKUP_DIR}..."
+    cp -a "${WEB_ROOT}" "${BACKUP_DIR}"
+    echo "Backup completed successfully."
+fi
+
+# 3. Create isolated staging directory for new release assets
+mkdir -p "${STAGING_DIR}"
+
+# Stage frontend assets from application build
+echo "Staging production assets..."
+cp -r "${APP_DIR}/public/admin-assets" "${STAGING_DIR}/"
+cp -r "${APP_DIR}/public/assets" "${STAGING_DIR}/"
+cp -r "${APP_DIR}/public/build" "${STAGING_DIR}/"
+cp "${APP_DIR}/public/index.php" "${STAGING_DIR}/index.php"
+cp "${APP_DIR}/public/favicon.ico" "${STAGING_DIR}/favicon.ico"
+cp "${APP_DIR}/public/robots.txt" "${STAGING_DIR}/robots.txt"
+
+# 4. Handle .htaccess preservation safely
+# Truehost cPanel frequently prepends/appends PHP handler blocks:
+# e.g., "# php -- BEGIN cPanel-generated handler ... # php -- END cPanel-generated handler"
+if [ -f "${WEB_ROOT}/.htaccess" ]; then
+    echo "Existing .htaccess detected in ${WEB_ROOT}. Checking for cPanel handlers..."
+    # Preserve existing .htaccess as base
+    cp "${WEB_ROOT}/.htaccess" "${STAGING_DIR}/.htaccess"
+
+    # If Laravel rewrite rules are not present, safely append them
+    if ! grep -q "RewriteEngine On" "${STAGING_DIR}/.htaccess"; then
+        echo "Appending Laravel rewrite directives to existing .htaccess..."
+        echo -e "\n# --- Laravel Front Controller Directives (Added ${TIMESTAMP}) ---" >> "${STAGING_DIR}/.htaccess"
+        cat "${APP_DIR}/public/.htaccess" >> "${STAGING_DIR}/.htaccess"
+    else
+        echo "Laravel rewrite directives already present in .htaccess."
+    fi
+else
+    echo "No existing .htaccess found. Using application default .htaccess."
+    cp "${APP_DIR}/public/.htaccess" "${STAGING_DIR}/.htaccess"
+fi
+
+# 5. Review before replacing (Safe Promotion)
+# Ensure destination directories are safe to update:
+for item in admin-assets assets build index.php favicon.ico robots.txt .htaccess; do
+    if [ -e "${WEB_ROOT}/${item}" ] && [ ! -w "${WEB_ROOT}/${item}" ]; then
+        echo "ERROR: Destination ${WEB_ROOT}/${item} is not writable. Human review required." >&2
+        exit 1
+    fi
+done
+
+# Copy staged files into document root safely
+cp -a "${STAGING_DIR}/." "${WEB_ROOT}/"
+
+# Clean up temporary staging directory
+rm -rf "${STAGING_DIR}"
+
+echo "Web document root safely updated. Existing files preserved and backed up to ${BACKUP_DIR}."
+```
 
 ### Step B.5: Install Production Dependencies (Composer)
 Via SSH on cPanel:
@@ -222,22 +280,79 @@ php artisan migrate --force
 > ```
 > *(Or manually insert the initial SuperAdmin account with a secure, rotated Bcrypt password).*
 
-### Step C.4: Configure File Storage Symlink & Permissions
-Ensure writable permissions and create public media link:
+### Step C.4: Configure File Storage Symlink, Directory Safeguards & Permissions
+Configure permissions and safely establish the public media storage symlink.
+
+> [!CAUTION]
+> **Storage Symlink Safeguards:**
+> - Never overwrite an existing physical directory at the destination with `ln -sfn` without backing it up; doing so will cause upload loss or create a nested link inside the directory.
+> - Broken or stale symlinks must be cleanly removed and recreated.
+> - Source storage target must be validated before symlinking.
+> - If an unexpected file or permission issue is encountered, stop and require manual review.
+
+Run the following safe symlink configuration script via SSH:
+
 ```bash
-cd /home/xqtrqexj/medicare-hms-app
+set -euo pipefail
 
-# Set permissions for Laravel runtime directories
-chmod -R 775 storage bootstrap/cache
+APP_DIR="/home/xqtrqexj/medicare-hms-app"
+WEB_ROOT="/home/xqtrqexj/medicare.kennedycheroben.co.ke"
+STORAGE_TARGET="${APP_DIR}/storage/app/public"
+STORAGE_LINK="${WEB_ROOT}/storage"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-# Safely check and link public media directory:
-# Verify that destination is not already an existing physical directory before symlinking
-if [ -d "/home/xqtrqexj/medicare.kennedycheroben.co.ke/storage" ] && [ ! -L "/home/xqtrqexj/medicare.kennedycheroben.co.ke/storage" ]; then
-    echo "Backing up existing physical storage directory..."
-    mv /home/xqtrqexj/medicare.kennedycheroben.co.ke/storage /home/xqtrqexj/medicare.kennedycheroben.co.ke/storage_backup_$(date +%Y%m%d_%H%M%S)
+# 1. Set runtime permissions for Laravel writable directories
+chmod -R 775 "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
+
+# 2. Validate source storage target exists
+if [ ! -d "${STORAGE_TARGET}" ]; then
+    echo "Creating public storage target directory: ${STORAGE_TARGET}..."
+    mkdir -p "${STORAGE_TARGET}"
 fi
 
-ln -sfn /home/xqtrqexj/medicare-hms-app/storage/app/public /home/xqtrqexj/medicare.kennedycheroben.co.ke/storage
+# 3. Evaluate destination state at ${STORAGE_LINK}
+if [ -L "${STORAGE_LINK}" ]; then
+    CURRENT_DEST=$(readlink "${STORAGE_LINK}" || true)
+    echo "Existing symlink detected at ${STORAGE_LINK} pointing to: ${CURRENT_DEST}"
+    if [ "${CURRENT_DEST}" = "${STORAGE_TARGET}" ]; then
+        echo "Symlink is already correctly configured and points to target. Validating target access..."
+        if [ -d "${STORAGE_LINK}" ]; then
+            echo "Storage link is healthy and operational. No changes required."
+        else
+            echo "ERROR: Symlink exists but target is inaccessible. Stop and require human review." >&2
+            exit 1
+        fi
+    else
+        echo "Symlink points to an alternate or stale target. Safely removing stale symlink..."
+        rm "${STORAGE_LINK}"
+        ln -s "${STORAGE_TARGET}" "${STORAGE_LINK}"
+        echo "Symlink updated to ${STORAGE_TARGET}."
+    fi
+elif [ -d "${STORAGE_LINK}" ]; then
+    # Destination is a physical directory (NOT a symlink)
+    echo "WARNING: A physical directory already exists at ${STORAGE_LINK}."
+    echo "To prevent silent data loss, moving physical directory to backup: ${STORAGE_LINK}_dir_backup_${TIMESTAMP}"
+    mv "${STORAGE_LINK}" "${STORAGE_LINK}_dir_backup_${TIMESTAMP}"
+    echo "Physical directory backed up. Creating symlink to ${STORAGE_TARGET}..."
+    ln -s "${STORAGE_TARGET}" "${STORAGE_LINK}"
+    echo "IMPORTANT: Inspect ${STORAGE_LINK}_dir_backup_${TIMESTAMP} for any previously uploaded media files that should be migrated to ${STORAGE_TARGET}."
+elif [ -e "${STORAGE_LINK}" ]; then
+    # Destination exists as a regular file or special node
+    echo "ERROR: Destination ${STORAGE_LINK} exists as an unexpected file type (not directory or symlink). Stopping for human review." >&2
+    exit 1
+else
+    # Destination does not exist; create symlink
+    echo "Creating new public storage symlink..."
+    ln -s "${STORAGE_TARGET}" "${STORAGE_LINK}"
+fi
+
+# 4. Final verification
+if [ -L "${STORAGE_LINK}" ] && [ -d "${STORAGE_LINK}" ]; then
+    echo "Storage symlink successfully verified: ${STORAGE_LINK} -> $(readlink "${STORAGE_LINK}")"
+else
+    echo "ERROR: Storage symlink verification failed. Immediate manual investigation required." >&2
+    exit 1
+fi
 ```
 
 ### Step C.5: Cache Configuration, Routes, and Views

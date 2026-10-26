@@ -11,6 +11,16 @@
         :breadcrumbs="[['label' => 'Services']]"
     />
 
+    <!-- Demonstration Notice -->
+    @if(config('hospital.is_demo'))
+        <div class="container mt-4">
+            <div class="alert alert-info border-0 rounded-3 small p-3 bg-info-subtle text-dark shadow-sm">
+                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                <strong>Demonstration Services Notice:</strong> Clinical capabilities and facilities described on this page illustrate hospital operational workflows in MediCare HMS. In an actual medical emergency, please call national emergency dispatch (<strong>999 / 112</strong> in Kenya) or visit the nearest physical hospital.
+            </div>
+        </div>
+    @endif
+
     <!-- Main Services Grid -->
     <section class="py-5">
         <div class="container" data-aos="fade-up">
@@ -32,11 +42,11 @@
                             </div>
                             <div>
                                 <h4 class="h5 fw-bold mb-0">24/7 Trauma & Emergency</h4>
-                                <small class="text-danger fw-semibold">Level 1 Accredited</small>
+                                <small class="text-danger fw-semibold">{{ config('hospital.is_demo') ? 'Simulated Emergency Service' : 'Level 1 Facility' }}</small>
                             </div>
                         </div>
                         <p class="text-muted small mb-3">
-                            Full-time board-certified emergency physicians, dedicated resuscitation bays, and rapid vascular access for acute myocardial infarction and stroke protocols.
+                            {{ config('hospital.is_demo') ? 'Simulated acute triage workflows, demonstration resuscitation bays, and emergency admission pathways within the HMS.' : 'Full-time emergency physicians, dedicated resuscitation bays, and rapid vascular access for acute myocardial infarction and stroke protocols.' }}
                         </p>
                         <ul class="list-unstyled small text-muted mb-0">
                             <li class="mb-1"><i class="bi bi-check2 text-primary me-2"></i>Dedicated ambulance dispatch</li>
@@ -124,7 +134,7 @@
                             </div>
                             <div>
                                 <h4 class="h5 fw-bold mb-0">Pathology & Clinical Lab</h4>
-                                <small class="text-info fw-semibold">ISO 15189 Accredited</small>
+                                <small class="text-info fw-semibold">{{ config('hospital.is_demo') ? 'Diagnostic Laboratory' : 'ISO 15189 Standards' }}</small>
                             </div>
                         </div>
                         <p class="text-muted small mb-3">

@@ -247,15 +247,15 @@
                 <div class="col-lg-4">
 
                     <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white" style="background: linear-gradient(135deg, #17325b 0%, #0d1e38 100%);">
-                        <span class="badge bg-info text-dark fw-bold mb-2 align-self-start">Direct Reservation</span>
-                        <h4 class="fw-bold mb-2 text-white">Book with {{ $doctor->name }}</h4>
+                        <span class="badge bg-info text-dark fw-bold mb-2 align-self-start">{{ config('hospital.is_demo') ? 'Simulated Booking' : 'Direct Reservation' }}</span>
+                        <h4 class="fw-bold mb-2 text-white">{{ config('hospital.is_demo') ? 'Simulate Visit with ' . $doctor->name : 'Book with ' . $doctor->name }}</h4>
                         <p class="small text-light opacity-75 mb-3">
-                            Submit your visit request to reserve a consultation slot. Our clinical coordinator will confirm your exact time.
+                            {{ config('hospital.is_demo') ? 'Submit a simulated visit request for this demonstration doctor profile.' : 'Submit your visit request to reserve a consultation slot. Our clinical coordinator will confirm your exact time.' }}
                         </p>
                         <a href="{{ route('appointments.create', ['dept' => $doctor->department_id, 'doctor' => $doctor->id]) }}" class="btn btn-primary btn-lg w-100 fw-bold mb-2">
-                            Reserve Consultation
+                            {{ config('hospital.is_demo') ? 'Test Visit Request' : 'Reserve Consultation' }}
                         </a>
-                        <small class="text-light opacity-50 d-block text-center" style="font-size: 0.75rem;">No payment required online</small>
+                        <small class="text-light opacity-50 d-block text-center" style="font-size: 0.75rem;">{{ config('hospital.is_demo') ? 'Software demonstration mode' : 'No payment required online' }}</small>
                     </div>
 
                     <!-- Department Emergency Card -->
@@ -271,8 +271,13 @@
                                 <strong>{{ $doctor->department->phone_extension ?? 'Direct Switchboard' }}</strong>
                             </li>
                             <li>
-                                <span class="text-muted d-block">24/7 Department Emergency:</span>
-                                <strong class="text-danger">{{ $doctor->department->emergency_contact ?? config('hospital.emergency_phone') }}</strong>
+                                <span class="text-muted d-block">Emergency Guidance:</span>
+                                @if(config('hospital.is_demo'))
+                                    <strong class="text-warning">Call 999 / 112 (National Dispatch)</strong>
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">Simulated doctor profile</small>
+                                @else
+                                    <strong class="text-danger">{{ $doctor->department->emergency_contact ?? config('hospital.emergency_phone') }}</strong>
+                                @endif
                             </li>
                         </ul>
                     </div>
