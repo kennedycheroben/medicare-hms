@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
-use App\Models\Doctor;
 use Illuminate\Support\Facades\Config;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class DemoModeSafetyTest extends TestCase
@@ -17,6 +17,40 @@ class DemoModeSafetyTest extends TestCase
             $this->seed(\Database\Seeders\HospitalDataSeeder::class);
         }
     }
+
+    /**
+     * Helper to recursively remove a temporary directory.
+     */
+    private function removeDirectory(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+
+        $items = scandir($dir);
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $path = $dir . DIRECTORY_SEPARATOR . $item;
+            if (is_link($path)) {
+                unlink($path);
+            } elseif (is_dir($path)) {
+                $this->removeDirectory($path);
+            } else {
+                unlink($path);
+            }
+        }
+        rmdir($dir);
+    }
+
+    // =========================================================================
+    // 1. Public Demonstration Safety & Disclaimer Tests
+    // =========================================================================
 
     /**
      * Test that demo mode displays prominent software demonstration disclaimers across public pages.
@@ -160,34 +194,321 @@ class DemoModeSafetyTest extends TestCase
         $homeResponse->assertSee('Trauma Simulation Facility');
     }
 
+    // =========================================================================
+    // 2. Executable Deployment Runbook & Asset Promotion Safety Tests
+    // =========================================================================
+
     /**
-     * Test that the deployment runbook contains explicit defensive backup, staging, and symlink safeguards.
+     * Executable Test: Verify that asset promotion blocks silent overwrites when destination files differ.
      */
-    public function test_deployment_runbook_contains_defensive_deployment_safeguards(): void
+    public function test_asset_promotion_blocks_silent_overwrite_of_differing_files_without_explicit_approval(): void
+    {
+        $baseTemp = sys_get_temp_dir() . '/medicare_test_' . uniqid();
+        $tempApp = $baseTemp . '/app';
+        $tempWebRoot = $baseTemp . '/webroot';
+
+        mkdir($tempApp . '/public/admin-assets', 0755, true);
+        file_put_contents($tempApp . '/public/index.php', '<?php echo "release v2.0";');
+        file_put_contents($tempApp . '/public/robots.txt', 'User-agent: *');
+        file_put_contents($tempApp . '/public/.htaccess', 'RewriteEngine On');
+
+        mkdir($tempWebRoot, 0755, true);
+        file_put_contents($tempWebRoot . '/index.php', '<?php echo "existing custom code";');
+
+        $scriptPath = base_path('scripts/promote_release_assets.sh');
+        $this->assertFileExists($scriptPath);
+
+        // 1. Run WITHOUT explicit approval (ALLOW_REPLACE=0)
+        $process = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+        ], null, ['ALLOW_REPLACE' => '0']);
+        $process->run();
+
+        // Must fail with non-zero exit code
+        $this->assertFalse($process->isSuccessful(), 'Promotion must fail when collisions exist without explicit approval.');
+        $this->assertStringContainsString('SAFETY STOP', $process->getErrorOutput());
+        $this->assertStringContainsString('ALLOW_REPLACE=1', $process->getErrorOutput());
+
+        // Verify existing destination file was NOT overwritten
+        $this->assertEquals(
+            '<?php echo "existing custom code";',
+            file_get_contents($tempWebRoot . '/index.php'),
+            'Existing destination file must not be silently overwritten.'
+        );
+
+        // 2. Run WITH explicit approval (ALLOW_REPLACE=1)
+        $approvedProcess = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--confirm-replace',
+        ], null, ['ALLOW_REPLACE' => '1']);
+        $approvedProcess->run();
+
+        $this->assertTrue(
+            $approvedProcess->isSuccessful(),
+            'Promotion must succeed once operator explicitly approves replacement: ' . $approvedProcess->getErrorOutput()
+        );
+        $this->assertEquals(
+            '<?php echo "release v2.0";',
+            file_get_contents($tempWebRoot . '/index.php'),
+            'Destination file must be updated to staged release after approval.'
+        );
+
+        $this->removeDirectory($baseTemp);
+    }
+
+    /**
+     * Executable Test: Verify that asset promotion preserves cPanel-generated .htaccess handlers.
+     */
+    public function test_asset_promotion_preserves_cpanel_htaccess_handlers(): void
+    {
+        $baseTemp = sys_get_temp_dir() . '/medicare_htaccess_' . uniqid();
+        $tempApp = $baseTemp . '/app';
+        $tempWebRoot = $baseTemp . '/webroot';
+
+        mkdir($tempApp . '/public', 0755, true);
+        file_put_contents($tempApp . '/public/index.php', '<?php echo "v2";');
+        file_put_contents($tempApp . '/public/.htaccess', "RewriteEngine On\nRewriteRule ^ index.php [L]");
+
+        mkdir($tempWebRoot, 0755, true);
+        $cpanelHandler = "# php -- BEGIN cPanel-generated handler do not edit\nAddHandler application/x-httpd-ea-php83 .php\n# php -- END cPanel-generated handler\n";
+        file_put_contents($tempWebRoot . '/.htaccess', $cpanelHandler);
+
+        $scriptPath = base_path('scripts/promote_release_assets.sh');
+        $process = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--confirm-replace',
+        ], null, ['ALLOW_REPLACE' => '1']);
+        $process->run();
+
+        $this->assertTrue($process->isSuccessful(), 'Promotion should succeed: ' . $process->getErrorOutput());
+
+        $promotedHtaccess = file_get_contents($tempWebRoot . '/.htaccess');
+        $this->assertStringContainsString('# php -- BEGIN cPanel-generated handler', $promotedHtaccess);
+        $this->assertStringContainsString('AddHandler application/x-httpd-ea-php83 .php', $promotedHtaccess);
+        $this->assertStringContainsString('RewriteEngine On', $promotedHtaccess);
+
+        $this->removeDirectory($baseTemp);
+    }
+
+    // =========================================================================
+    // 3. Executable Storage Symlink & Permission Tests
+    // =========================================================================
+
+    /**
+     * Executable Test: Verify that storage symlink configurator refuses to silently replace an unexpected active symlink.
+     */
+    public function test_storage_symlink_blocks_automatic_replacement_of_unexpected_active_target(): void
+    {
+        $baseTemp = sys_get_temp_dir() . '/medicare_symlink_' . uniqid();
+        $tempApp = $baseTemp . '/app';
+        $tempWebRoot = $baseTemp . '/webroot';
+        $otherActiveTarget = $baseTemp . '/other_mount';
+
+        mkdir($tempApp . '/storage/app/public', 0755, true);
+        mkdir($tempApp . '/bootstrap/cache', 0755, true);
+        mkdir($tempWebRoot, 0755, true);
+        mkdir($otherActiveTarget, 0755, true);
+
+        // Create symlink pointing to an unexpected active target
+        symlink($otherActiveTarget, $tempWebRoot . '/storage');
+
+        $scriptPath = base_path('scripts/configure_storage_symlink.sh');
+        $this->assertFileExists($scriptPath);
+
+        // 1. Execute WITHOUT operator confirmation
+        $process = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--skip-chmod',
+        ]);
+        $process->run();
+
+        // Must fail and block automatic replacement
+        $this->assertFalse(
+            $process->isSuccessful(),
+            'Storage script must stop for human review when symlink points to unexpected active target.'
+        );
+        $this->assertStringContainsString('UNEXPECTED TARGET', $process->getErrorOutput());
+        $this->assertStringContainsString('CONFIRM_STALE_SYMLINK=1', $process->getErrorOutput());
+
+        // Verify symlink was NOT clobbered
+        $this->assertEquals(
+            $otherActiveTarget,
+            readlink($tempWebRoot . '/storage'),
+            'Unexpected active symlink must remain untouched without explicit confirmation.'
+        );
+
+        // 2. Execute WITH explicit operator confirmation (CONFIRM_STALE_SYMLINK=1)
+        $approvedProcess = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--confirm-stale-symlink',
+            '--skip-chmod',
+        ], null, ['CONFIRM_STALE_SYMLINK' => '1']);
+        $approvedProcess->run();
+
+        $this->assertTrue(
+            $approvedProcess->isSuccessful(),
+            'Storage script must succeed once operator confirms stale symlink replacement: ' . $approvedProcess->getErrorOutput()
+        );
+        $this->assertEquals(
+            $tempApp . '/storage/app/public',
+            readlink($tempWebRoot . '/storage'),
+            'Symlink must be updated to application storage target after explicit confirmation.'
+        );
+
+        $this->removeDirectory($baseTemp);
+    }
+
+    /**
+     * Executable Test: Verify that storage symlink configurator blocks silent replacement of physical directory.
+     */
+    public function test_storage_symlink_blocks_silent_replacement_of_physical_directory(): void
+    {
+        $baseTemp = sys_get_temp_dir() . '/medicare_dir_' . uniqid();
+        $tempApp = $baseTemp . '/app';
+        $tempWebRoot = $baseTemp . '/webroot';
+
+        mkdir($tempApp . '/storage/app/public', 0755, true);
+        mkdir($tempApp . '/bootstrap/cache', 0755, true);
+        mkdir($tempWebRoot . '/storage', 0755, true);
+        file_put_contents($tempWebRoot . '/storage/patient_scan.pdf', 'fake PDF content');
+
+        $scriptPath = base_path('scripts/configure_storage_symlink.sh');
+
+        // 1. Run WITHOUT confirmation
+        $process = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--skip-chmod',
+        ]);
+        $process->run();
+
+        $this->assertFalse(
+            $process->isSuccessful(),
+            'Storage script must stop for human review when destination is a physical directory.'
+        );
+        $this->assertStringContainsString('PHYSICAL DIRECTORY', $process->getErrorOutput());
+        $this->assertStringContainsString('CONFIRM_DIR_MIGRATION=1', $process->getErrorOutput());
+        $this->assertTrue(
+            is_dir($tempWebRoot . '/storage') && ! is_link($tempWebRoot . '/storage'),
+            'Physical directory must not be removed without confirmation.'
+        );
+
+        // 2. Run WITH confirmation
+        $approvedProcess = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--confirm-dir-migration',
+            '--skip-chmod',
+        ], null, ['CONFIRM_DIR_MIGRATION' => '1']);
+        $approvedProcess->run();
+
+        $this->assertTrue(
+            $approvedProcess->isSuccessful(),
+            'Storage script must succeed with confirmation: ' . $approvedProcess->getErrorOutput()
+        );
+        $this->assertTrue(is_link($tempWebRoot . '/storage'), 'Destination must now be a symlink.');
+
+        $this->removeDirectory($baseTemp);
+    }
+
+    /**
+     * Executable Test: Verify least-privilege permissions (755 directories, 644 files) without broad 775.
+     */
+    public function test_storage_script_enforces_least_privilege_permissions_without_broad_775(): void
+    {
+        $baseTemp = sys_get_temp_dir() . '/medicare_perms_' . uniqid();
+        $tempApp = $baseTemp . '/app';
+        $tempWebRoot = $baseTemp . '/webroot';
+
+        mkdir($tempApp . '/storage/framework/views', 0777, true);
+        mkdir($tempApp . '/bootstrap/cache', 0777, true);
+        file_put_contents($tempApp . '/storage/framework/views/test.php', '<?php');
+        file_put_contents($tempApp . '/.env', 'APP_ENV=production');
+        chmod($tempApp . '/.env', 0666);
+
+        mkdir($tempWebRoot, 0755, true);
+
+        $scriptPath = base_path('scripts/configure_storage_symlink.sh');
+        $process = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+        ]);
+        $process->run();
+
+        $this->assertTrue($process->isSuccessful(), 'Storage script must succeed: ' . $process->getErrorOutput());
+
+        // Check directory permission is 755 (octal 0755)
+        $dirPerms = substr(sprintf('%o', fileperms($tempApp . '/storage')), -4);
+        $this->assertEquals('0755', $dirPerms, 'Directories must be 0755 for least privilege under suPHP.');
+
+        // Check file permission is 644 (octal 0644)
+        $filePerms = substr(sprintf('%o', fileperms($tempApp . '/storage/framework/views/test.php')), -4);
+        $this->assertEquals('0644', $filePerms, 'Files must be 0644 for least privilege.');
+
+        // Check .env is 600
+        $envPerms = substr(sprintf('%o', fileperms($tempApp . '/.env')), -4);
+        $this->assertEquals('0600', $envPerms, '.env must be 0600.');
+
+        $this->removeDirectory($baseTemp);
+    }
+
+    /**
+     * Anti-pattern Test: Ensure runbook forbids unsafe staged-copy overwrites and unconditional symlink replacement.
+     */
+    public function test_runbook_forbids_unsafe_overwrite_and_automatic_replacement_patterns(): void
     {
         $runbookPath = base_path('DEPLOYMENT_RUNBOOK.md');
         $this->assertFileExists($runbookPath);
         $runbookContent = file_get_contents($runbookPath);
 
-        // 1. Must NOT contain raw blind copy command directly into public web root
+        // 1. Must NOT contain unsafe staged copy pattern
         $this->assertStringNotContainsString(
-            'cp -r /home/xqtrqexj/medicare-hms-app/public/admin-assets /home/xqtrqexj/medicare.kennedycheroben.co.ke/',
+            'cp -a "${STAGING_DIR}/." "${WEB_ROOT}/"',
             $runbookContent,
-            'Runbook must not instruct blind cp -r directly into web root.'
+            'Runbook must not contain the unsafe staged-copy pattern cp -a "${STAGING_DIR}/." "${WEB_ROOT}/".'
+        );
+        $this->assertStringNotContainsString(
+            'cp -a "${STAGING_DIR}/."',
+            $runbookContent,
+            'Runbook must not instruct blind copy of staging directory into web root.'
         );
 
-        // 2. Must contain backup procedure before synchronizing web root
-        $this->assertStringContainsString('BACKUP_DIR=', $runbookContent);
-        $this->assertStringContainsString('STAGING_DIR=', $runbookContent);
-        $this->assertStringContainsString('cp -a "${WEB_ROOT}" "${BACKUP_DIR}"', $runbookContent);
+        // 2. Must NOT contain broad 775 permissions
+        $this->assertStringNotContainsString(
+            'chmod -R 775',
+            $runbookContent,
+            'Runbook must not recommend unnecessarily broad 775 permissions.'
+        );
 
-        // 3. Must preserve existing .htaccess and cPanel handlers
-        $this->assertStringContainsString('cPanel-generated handler', $runbookContent);
-        $this->assertStringContainsString('RewriteEngine On', $runbookContent);
+        // 3. Must document explicit approval controls
+        $this->assertStringContainsString('ALLOW_REPLACE=1', $runbookContent);
+        $this->assertStringContainsString('CONFIRM_STALE_SYMLINK=1', $runbookContent);
+        $this->assertStringContainsString('CONFIRM_DIR_MIGRATION=1', $runbookContent);
 
-        // 4. Must validate storage symlink and prevent silent directory clobbering
-        $this->assertStringContainsString('readlink', $runbookContent);
-        $this->assertStringContainsString('_dir_backup_', $runbookContent);
-        $this->assertStringContainsString('human review', strtolower($runbookContent));
+        // 4. Must reference least privilege permissions
+        $this->assertStringContainsString('755', $runbookContent);
+        $this->assertStringContainsString('644', $runbookContent);
+        $this->assertStringContainsString('600', $runbookContent);
     }
 }
