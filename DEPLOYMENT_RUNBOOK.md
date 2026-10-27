@@ -185,10 +185,11 @@ ALLOW_REPLACE=1 ./scripts/promote_release_assets.sh
 6. **Atomic Directory Swap & Backup Retention:** Replaces managed directories by renaming the live directory to `<item>_prev_<timestamp>` and moving the new version in place. **Does not delete `<item>_prev_<timestamp>`**; preserves it for immediate rollback.
 7. **Rollback Instructions:** Displays retained backup paths and exact rollback commands upon completion. Backups are retained until manual verification and explicit operator cleanup.
 
-To roll back immediately if an issue is detected during post-deployment verification:
+To roll back cleanly without leaving orphaned files introduced by this release:
 ```bash
-# Roll back public web root from retained backup:
-cp -a /home/xqtrqexj/backup_webroot_<TIMESTAMP>/. /home/xqtrqexj/medicare.kennedycheroben.co.ke/
+# Move current web root aside and restore the verified pre-deployment backup cleanly:
+mv /home/xqtrqexj/medicare.kennedycheroben.co.ke /home/xqtrqexj/medicare.kennedycheroben.co.ke_failed_<TIMESTAMP>
+cp -a /home/xqtrqexj/backup_webroot_<TIMESTAMP> /home/xqtrqexj/medicare.kennedycheroben.co.ke
 ```
 
 ### Step B.5: Install Production Dependencies (Composer)
@@ -336,13 +337,18 @@ If a critical blocker is encountered during or after deployment:
    cd /home/xqtrqexj/medicare-hms-app
    php artisan down --secret="medicare-emergency-access"
    ```
-2. Revert codebase to previous verified release archive:
+2. Revert application codebase and public web root cleanly:
    ```bash
+   # Revert application codebase to previous verified release archive:
    tar -xzvf medicare-hms-deploy-previous.tar.gz -C /home/xqtrqexj/medicare-hms-app
    cd /home/xqtrqexj/medicare-hms-app
    php artisan config:clear
    php artisan route:clear
    php artisan view:clear
+
+   # Revert public document root cleanly (accounts for any newly added files):
+   mv /home/xqtrqexj/medicare.kennedycheroben.co.ke /home/xqtrqexj/medicare.kennedycheroben.co.ke_failed_<TIMESTAMP>
+   cp -a /home/xqtrqexj/backup_webroot_<TIMESTAMP> /home/xqtrqexj/medicare.kennedycheroben.co.ke
    ```
 3. Bring site back online:
    ```bash

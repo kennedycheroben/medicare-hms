@@ -329,6 +329,183 @@ class DemoModeSafetyTest extends TestCase
         $this->removeDirectory($baseTemp);
     }
 
+    /**
+     * Executable Test: Verify dry-run accurately reports UNCHANGED vs COLLISION without mutating web root.
+     */
+    public function test_asset_promotion_dry_run_accurately_detects_unchanged_and_differing_assets_without_mutating_webroot(): void
+    {
+        $baseTemp = sys_get_temp_dir() . '/medicare_dryrun_' . uniqid();
+        $tempApp = $baseTemp . '/app';
+        $tempWebRoot = $baseTemp . '/webroot';
+
+        // 1. Build application assets
+        mkdir($tempApp . '/public/assets', 0755, true);
+        mkdir($tempApp . '/public/admin-assets', 0755, true);
+        file_put_contents($tempApp . '/public/assets/app.css', '/* identical styles */');
+        file_put_contents($tempApp . '/public/admin-assets/admin.js', '/* release v2.0 js */');
+        file_put_contents($tempApp . '/public/index.php', '<?php echo "identical index";');
+        file_put_contents($tempApp . '/public/robots.txt', 'User-agent: *');
+        file_put_contents($tempApp . '/public/.htaccess', "RewriteEngine On\nRewriteRule ^ index.php [L]");
+
+        // 2. Build destination: assets/app.css and index.php are IDENTICAL, admin-assets is DIFFERENT
+        mkdir($tempWebRoot . '/assets', 0755, true);
+        mkdir($tempWebRoot . '/admin-assets', 0755, true);
+        file_put_contents($tempWebRoot . '/assets/app.css', '/* identical styles */');
+        file_put_contents($tempWebRoot . '/admin-assets/admin.js', '/* legacy old js */');
+        file_put_contents($tempWebRoot . '/index.php', '<?php echo "identical index";');
+
+        $scriptPath = base_path('scripts/promote_release_assets.sh');
+
+        // 3. Run in DRY-RUN mode
+        $dryRunProcess = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--dry-run',
+        ]);
+        $dryRunProcess->run();
+
+        $this->assertTrue(
+            $dryRunProcess->isSuccessful(),
+            'Dry-run must exit with code 0: ' . $dryRunProcess->getErrorOutput()
+        );
+
+        $output = $dryRunProcess->getOutput();
+
+        // Must accurately distinguish UNCHANGED vs COLLISION
+        $this->assertStringContainsString('[UNCHANGED]   assets/', $output);
+        $this->assertStringContainsString('[UNCHANGED]   index.php', $output);
+        $this->assertStringContainsString('[COLLISION]   admin-assets/', $output);
+        $this->assertStringContainsString('DRY-RUN INSPECTION COMPLETED', $output);
+        $this->assertStringContainsString('Collisions detected: 1', $output);
+
+        // NON-MUTATION ASSERTIONS: Ensure dry-run touched zero destination files
+        $this->assertEquals(
+            '/* legacy old js */',
+            file_get_contents($tempWebRoot . '/admin-assets/admin.js'),
+            'Dry-run must never overwrite destination files.'
+        );
+        $this->assertFileDoesNotExist(
+            $tempWebRoot . '/robots.txt',
+            'Dry-run must not create new files in the destination web root.'
+        );
+        $this->assertEmpty(
+            glob($baseTemp . '/backup_webroot_*'),
+            'Dry-run must not create backup directories.'
+        );
+
+        $this->removeDirectory($baseTemp);
+    }
+
+    /**
+     * Executable Test: Verify .htaccess preservation is idempotent and does not duplicate Laravel rewrite rules on repeated runs.
+     */
+    public function test_asset_promotion_htaccess_preservation_is_idempotent_on_repeated_runs(): void
+    {
+        $baseTemp = sys_get_temp_dir() . '/medicare_ht_idempotent_' . uniqid();
+        $tempApp = $baseTemp . '/app';
+        $tempWebRoot = $baseTemp . '/webroot';
+
+        mkdir($tempApp . '/public', 0755, true);
+        file_put_contents($tempApp . '/public/index.php', '<?php echo "v2";');
+        file_put_contents($tempApp . '/public/.htaccess', "<IfModule mod_rewrite.c>\n    RewriteEngine On\n    RewriteRule ^ index.php [L]\n</IfModule>");
+
+        mkdir($tempWebRoot, 0755, true);
+        $cpanelHandler = "# php -- BEGIN cPanel-generated handler do not edit\nAddHandler application/x-httpd-ea-php83 .php\n# php -- END cPanel-generated handler";
+        file_put_contents($tempWebRoot . '/.htaccess', $cpanelHandler);
+
+        $scriptPath = base_path('scripts/promote_release_assets.sh');
+
+        // First promotion run: merges cPanel handler and Laravel rules
+        $run1 = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--confirm-replace',
+        ], null, ['ALLOW_REPLACE' => '1']);
+        $run1->run();
+
+        $this->assertTrue($run1->isSuccessful(), 'Run 1 must succeed: ' . $run1->getErrorOutput());
+        $contentAfterRun1 = file_get_contents($tempWebRoot . '/.htaccess');
+
+        $this->assertStringContainsString('# php -- BEGIN cPanel-generated handler', $contentAfterRun1);
+        $this->assertEquals(1, substr_count($contentAfterRun1, 'RewriteEngine On'), 'RewriteEngine On must appear exactly once after run 1.');
+
+        // Second dry-run: should report .htaccess as UNCHANGED (0 collisions on .htaccess)
+        $dryRun2 = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--dry-run',
+        ]);
+        $dryRun2->run();
+
+        $this->assertTrue($dryRun2->isSuccessful(), 'Dry-run 2 must succeed: ' . $dryRun2->getErrorOutput());
+        $this->assertStringContainsString('[UNCHANGED]   .htaccess', $dryRun2->getOutput());
+        $this->assertStringNotContainsString('[COLLISION]   .htaccess', $dryRun2->getOutput());
+
+        // Second promotion run with confirmation: must NOT duplicate rewrite directives
+        $run2 = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--confirm-replace',
+        ], null, ['ALLOW_REPLACE' => '1']);
+        $run2->run();
+
+        $this->assertTrue($run2->isSuccessful(), 'Run 2 must succeed: ' . $run2->getErrorOutput());
+        $contentAfterRun2 = file_get_contents($tempWebRoot . '/.htaccess');
+
+        $this->assertStringContainsString('# php -- BEGIN cPanel-generated handler', $contentAfterRun2);
+        $this->assertEquals(1, substr_count($contentAfterRun2, 'RewriteEngine On'), 'RewriteEngine On must still appear exactly once after repeated run.');
+
+        $this->removeDirectory($baseTemp);
+    }
+
+    /**
+     * Executable Test: Verify rollback instructions account for newly introduced files by moving webroot aside before backup restore.
+     */
+    public function test_asset_promotion_rollback_instructions_account_for_newly_introduced_files(): void
+    {
+        $baseTemp = sys_get_temp_dir() . '/medicare_rollback_' . uniqid();
+        $tempApp = $baseTemp . '/app';
+        $tempWebRoot = $baseTemp . '/webroot';
+
+        mkdir($tempApp . '/public', 0755, true);
+        file_put_contents($tempApp . '/public/index.php', '<?php echo "v2";');
+        file_put_contents($tempApp . '/public/robots.txt', 'User-agent: *');
+        file_put_contents($tempApp . '/public/.htaccess', 'RewriteEngine On');
+
+        mkdir($tempWebRoot, 0755, true);
+        file_put_contents($tempWebRoot . '/index.php', '<?php echo "v1";');
+
+        $scriptPath = base_path('scripts/promote_release_assets.sh');
+
+        $process = new Process([
+            'bash',
+            $scriptPath,
+            '--app-dir', $tempApp,
+            '--web-root', $tempWebRoot,
+            '--confirm-replace',
+        ], null, ['ALLOW_REPLACE' => '1']);
+        $process->run();
+
+        $this->assertTrue($process->isSuccessful(), 'Promotion should succeed: ' . $process->getErrorOutput());
+        $output = $process->getOutput();
+
+        // Rollback instructions must account for new files (mv failed webroot aside, then restore backup cleanly)
+        $this->assertStringContainsString('mv "' . $tempWebRoot . '"', $output);
+        $this->assertStringContainsString('_failed_', $output);
+        $this->assertStringContainsString('cp -a "', $output);
+        $this->assertStringNotContainsString('cp -a "${BACKUP_DIR}/." "${WEB_ROOT}/"', $output);
+
+        $this->removeDirectory($baseTemp);
+    }
+
     // =========================================================================
     // 3. Executable Storage Symlink & Permission Tests
     // =========================================================================
