@@ -128,7 +128,17 @@ sha256sum /tmp/medicare-hms-deploy_*.tar.gz
 ### Step B.3: Deploy Application Code via Git (Recommended) or Archive
 Log in via SSH or cPanel Terminal:
 
-#### Method 1: Git-Based Deployment (Recommended)
+#### Method 1: Git-Based Deployment via cPanel Git Version Control or SSH (Recommended)
+
+##### Option A: cPanel Git™ Version Control Web Interface
+1. In cPanel, navigate to **Git™ Version Control**.
+2. Manage the repository at `/home/xqtrqexj/medicare-hms-app`.
+3. Under **Pull or Deploy**:
+   - Click **Update from Remote** to pull the latest commits from the remote repository.
+   - Click **Deploy HEAD Commit** to trigger the automated, non-destructive deployment tasks defined in `.cpanel.yml`.
+4. The `.cpanel.yml` deployment tasks safely synchronize the public bridge `index.php`, `favicon.ico`, `robots.txt`, and frontend assets (`admin-assets/`, `assets/`, `build/`) into the public document root `/home/xqtrqexj/medicare.kennedycheroben.co.ke/`, preserving server-specific `.htaccess` configurations and never overwriting `.env` or application secrets.
+
+##### Option B: Terminal / SSH Workflow
 ```bash
 # Clone the verified release candidate branch directly outside document root:
 git clone -b fix/release-readiness-audit https://github.com/kennedycheroben/medicare-hms.git /home/xqtrqexj/medicare-hms-app

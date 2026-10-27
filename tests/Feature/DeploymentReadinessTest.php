@@ -307,4 +307,35 @@ class DeploymentReadinessTest extends TestCase
         $cssAsset = $this->projectRoot.'/public/build/'.$manifest['resources/css/app.css']['file'];
         $this->assertFileExists($cssAsset, 'Compiled CSS asset must exist on disk');
     }
+
+    public function test_cpanel_deployment_configuration_is_valid_and_enforces_safety(): void
+    {
+        $cpanelYamlPath = $this->projectRoot.'/.cpanel.yml';
+        $this->assertFileExists($cpanelYamlPath, '.cpanel.yml must exist at the project root for cPanel Git deployment');
+
+        $content = file_get_contents($cpanelYamlPath);
+        $this->assertStringStartsWith('---', trim($content), '.cpanel.yml must start with YAML document separator ---');
+        $this->assertStringContainsString('deployment:', $content);
+        $this->assertStringContainsString('tasks:', $content);
+
+        // Target path validation
+        $this->assertStringContainsString('/home/xqtrqexj/medicare.kennedycheroben.co.ke', $content, 'Tasks must target public document root');
+
+        // Asset promotion safety
+        $this->assertStringContainsString('public/index.php', $content, 'Front controller bridge must be deployed');
+        $this->assertStringContainsString('public/build', $content, 'Compiled Vite assets must be deployed');
+        $this->assertStringContainsString('public/admin-assets', $content, 'Admin assets must be deployed');
+        $this->assertStringContainsString('public/assets', $content, 'Public assets must be deployed');
+
+        // Destructive / unsafe commands must NOT be present
+        $this->assertStringNotContainsString('.env', $content, '.cpanel.yml must never touch .env file');
+        $this->assertStringNotContainsString('migrate', $content, '.cpanel.yml must not execute migrations automatically');
+        $this->assertStringNotContainsString('db:seed', $content, '.cpanel.yml must not run seeders');
+        $this->assertStringNotContainsString('key:generate', $content, '.cpanel.yml must not regenerate APP_KEY');
+        $this->assertStringNotContainsString('rm -rf', $content, '.cpanel.yml must not contain recursive deletion');
+        $this->assertStringNotContainsString('--delete', $content, '.cpanel.yml must not delete files in production');
+
+        // Ensure .htaccess preservation check is present (not blind overwrite)
+        $this->assertMatchesRegularExpression('/if\s+\[\s+!\s+-f\s+.*\.htaccess\s+\]/', $content, '.htaccess must only be copied if not already present on server');
+    }
 }

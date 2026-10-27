@@ -1,0 +1,15 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/xqtrqexj/medicare.kennedycheroben.co.ke
+    - /bin/mkdir -p ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}
+    - /bin/cp public/index.php ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/index.php
+    - /bin/cp public/favicon.ico ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/favicon.ico
+    - /bin/cp public/robots.txt ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/robots.txt
+    - /bin/mkdir -p ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/admin-assets ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/assets ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/build
+    - /bin/cp -R public/admin-assets/. ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/admin-assets/
+    - /bin/cp -R public/assets/. ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/assets/
+    - /bin/cp -R public/build/. ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/build/
+    - /bin/bash -c "if [ ! -f ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/.htaccess ]; then /bin/cp public/.htaccess ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/.htaccess; fi"
+    - /bin/chmod 755 ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/admin-assets ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/assets ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/build
+    - /bin/chmod 644 ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/index.php ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/favicon.ico ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/robots.txt
