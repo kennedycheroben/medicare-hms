@@ -35,7 +35,11 @@
                         <div class="col-lg-4 col-md-6">
                             <article class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden bg-white">
                                 @if ($article->coverUrl())
-                                    <img src="{{ $article->coverUrl() }}" alt="" class="w-100" style="height: 200px; object-fit: cover;" loading="lazy">
+                                    <img src="{{ $article->coverUrl() }}" alt="{{ $article->title }}" class="w-100" style="height: 200px; object-fit: cover;" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-100 bg-light d-flex align-items-center justify-content-center text-muted\' style=\'height: 200px;\'><i class=\'bi bi-newspaper fs-1 text-primary opacity-50\'></i></div>';">
+                                @else
+                                    <div class="w-100 bg-light d-flex align-items-center justify-content-center text-muted" style="height: 200px;">
+                                        <i class="bi bi-newspaper fs-1 text-primary opacity-50"></i>
+                                    </div>
                                 @endif
                                 <div class="card-body p-4 d-flex flex-column">
                                     <div class="d-flex justify-content-between align-items-center mb-2 small text-muted">

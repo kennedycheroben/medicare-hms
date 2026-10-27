@@ -101,7 +101,14 @@
                         <div class="card h-100 border-0 shadow-sm rounded-3 overflow-hidden d-flex flex-column bg-white">
                             @if ($dept->image)
                                 <div class="position-relative overflow-hidden" style="height: 200px;">
-                                    <img src="{{ asset($dept->image) }}" alt="{{ $dept->name }}" class="w-100 h-100" style="object-fit: cover;">
+                                    <img src="{{ asset($dept->image) }}" alt="{{ $dept->name }}" class="w-100 h-100" style="object-fit: cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-100 h-100 bg-light d-flex align-items-center justify-content-center text-muted\'><i class=\'bi bi-hospital fs-1 text-primary opacity-50\'></i></div>';">
+                                    <span class="badge bg-primary position-absolute top-0 end-0 m-3 px-3 py-2">
+                                        {{ $dept->doctors_count }} {{ Str::plural('Doctor', $dept->doctors_count) }}
+                                    </span>
+                                </div>
+                            @else
+                                <div class="position-relative overflow-hidden bg-primary-subtle d-flex align-items-center justify-content-center" style="height: 140px;">
+                                    <i class="bi {{ $dept->icon ?? 'bi-hospital' }} fs-1 text-primary opacity-50"></i>
                                     <span class="badge bg-primary position-absolute top-0 end-0 m-3 px-3 py-2">
                                         {{ $dept->doctors_count }} {{ Str::plural('Doctor', $dept->doctors_count) }}
                                     </span>

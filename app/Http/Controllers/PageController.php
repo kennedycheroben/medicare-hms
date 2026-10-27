@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Article;
 use App\Models\Department;
 use App\Models\Doctor;
 use Illuminate\Http\Request;
@@ -11,30 +12,39 @@ class PageController extends Controller
     public function home()
     {
         $departments = Department::where('is_active', true)->orderBy('sort_order')->take(6)->get();
-        $doctors = Doctor::with('department')->where('is_available', true)->take(6)->get();
+        $doctors = Doctor::with('department')->published()->take(6)->get();
+
         return view('pages.home', compact('departments', 'doctors'));
     }
 
     public function about()
     {
         $departmentCount = Department::where('is_active', true)->count();
-        $doctorCount = Doctor::where('is_available', true)->count();
+        $doctorCount = Doctor::published()->count();
+
         return view('pages.about', compact('departmentCount', 'doctorCount'));
     }
 
     public function departments()
     {
-        $departments = Department::withCount('doctors')->where('is_active', true)->orderBy('sort_order')->get();
+        $departments = Department::withCount(['doctors' => function ($q) {
+            $q->published();
+        }])->where('is_active', true)->orderBy('sort_order')->get();
+
         return view('pages.departments', compact('departments'));
     }
 
     public function departmentDetail(string $slug)
     {
         $department = Department::with(['doctors' => function ($q) {
-            $q->where('is_available', true);
+            $q->published();
         }])->where('slug', $slug)->where('is_active', true)->firstOrFail();
 
-        $otherDepartments = Department::where('id', '!=', $department->id)->where('is_active', true)->take(4)->get();
+        $otherDepartments = Department::where('id', '!=', $department->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->take(4)
+            ->get();
 
         return view('pages.department-detail', compact('department', 'otherDepartments'));
     }
@@ -55,8 +65,8 @@ class PageController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('specialty', 'like', "%{$search}%")
-                  ->orWhere('bio', 'like', "%{$search}%");
+                    ->orWhere('specialty', 'like', "%{$search}%")
+                    ->orWhere('bio', 'like', "%{$search}%");
             });
         }
 
@@ -92,20 +102,21 @@ class PageController extends Controller
     public function services()
     {
         $departments = Department::where('is_active', true)->get();
+
         return view('pages.services', compact('departments'));
     }
 
     public function news()
     {
-        $articles = \App\Models\Article::published()->latest('published_at')->paginate(9);
+        $articles = Article::published()->latest('published_at')->paginate(9);
 
         return view('pages.news', compact('articles'));
     }
 
     public function newsShow(string $slug)
     {
-        $article = \App\Models\Article::published()->where('slug', $slug)->firstOrFail();
-        $related = \App\Models\Article::published()->where('id', '!=', $article->id)->latest('published_at')->take(3)->get();
+        $article = Article::published()->where('slug', $slug)->firstOrFail();
+        $related = Article::published()->where('id', '!=', $article->id)->latest('published_at')->take(3)->get();
 
         return view('pages.news-show', ['article' => $article, 'related' => $related, 'isPreview' => false]);
     }

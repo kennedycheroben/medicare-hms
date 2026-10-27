@@ -46,9 +46,12 @@
                 </div>
                 <div class="col-md-3">
                     <select name="status" class="form-select bg-light">
-                        <option value="">-- Publication Status --</option>
+                        <option value="">-- All Statuses --</option>
+                        <option value="pending_review" {{ $status === 'pending_review' ? 'selected' : '' }}>Pending Review Queue {{ $pendingProfilesCount > 0 ? "({$pendingProfilesCount})" : '' }}</option>
+                        <option value="needs_revision" {{ $status === 'needs_revision' ? 'selected' : '' }}>Needs Revision</option>
                         <option value="published" {{ $status === 'published' ? 'selected' : '' }}>Published to Website</option>
-                        <option value="unpublished" {{ $status === 'unpublished' ? 'selected' : '' }}>Unpublished / Draft</option>
+                        <option value="draft" {{ $status === 'draft' ? 'selected' : '' }}>Draft</option>
+                        <option value="unpublished" {{ $status === 'unpublished' ? 'selected' : '' }}>Unpublished</option>
                     </select>
                 </div>
                 <div class="col-md-2 d-flex gap-2">
@@ -71,7 +74,7 @@
                         <th>Department</th>
                         <th>Qualifications</th>
                         <th>Availability</th>
-                        <th>Public Status</th>
+                        <th>Review Status</th>
                         <th>Rating</th>
                         <th class="pe-4 text-end">Action</th>
                     </tr>
@@ -81,7 +84,7 @@
                         <tr>
                             <td class="ps-4">
                                 <div class="d-flex align-items-center gap-3">
-                                    <img src="{{ asset($doc->image ?? 'assets/img/health/staff-1.webp') }}" alt="{{ $doc->name }}" class="rounded-circle" style="width: 44px; height: 44px; object-fit: cover;">
+                                    <img src="{{ $doc->imageUrl() }}" alt="{{ $doc->name }}" class="rounded-circle" style="width: 44px; height: 44px; object-fit: cover;">
                                     <div>
                                         <div class="fw-bold text-dark">{{ $doc->name }}</div>
                                         <div class="small text-muted">{{ $doc->specialty }}</div>
@@ -100,7 +103,20 @@
                                 @endif
                             </td>
                             <td>
-                                @if($doc->is_published)
+                                @if($doc->status === 'pending_review')
+                                    <span class="badge bg-warning text-dark border border-warning-subtle">
+                                        <i class="bi bi-hourglass-split me-1"></i> Pending Review
+                                    </span>
+                                @elseif($doc->status === 'needs_revision')
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                        <i class="bi bi-exclamation-triangle me-1"></i> Needs Revision
+                                    </span>
+                                    @if($doc->publication_notes)
+                                        <div class="extra-small text-muted text-truncate" style="max-width: 140px;" title="{{ $doc->publication_notes }}">
+                                            {{ $doc->publication_notes }}
+                                        </div>
+                                    @endif
+                                @elseif($doc->is_published)
                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
                                         <i class="bi bi-globe me-1"></i> Published
                                     </span>
@@ -108,8 +124,8 @@
                                         Approved {{ $doc->published_at ? $doc->published_at->format('M d, Y') : '' }}
                                     </div>
                                 @else
-                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
-                                        <i class="bi bi-eye-slash me-1"></i> Unpublished
+                                    <span class="badge bg-secondary-subtle text-secondary border">
+                                        <i class="bi bi-pencil me-1"></i> Draft
                                     </span>
                                 @endif
                             </td>
@@ -125,7 +141,41 @@
                                     <a href="{{ route('admin.doctors.edit', $doc->id) }}" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-pencil"></i> Edit
                                     </a>
-                                    @if($doc->is_published)
+                                    @if($doc->status === 'pending_review')
+                                        <form method="POST" action="{{ route('admin.doctors.approve', $doc->id) }}" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-success text-white" title="Approve profile and publish to public website">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#returnModal{{ $doc->id }}" title="Return for correction with feedback">
+                                            <i class="bi bi-arrow-return-left"></i> Return
+                                        </button>
+
+                                        <!-- Return Modal -->
+                                        <div class="modal fade" id="returnModal{{ $doc->id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog text-start">
+                                                <form method="POST" action="{{ route('admin.doctors.return', $doc->id) }}">
+                                                    @csrf
+                                                    <div class="modal-content rounded-4 border-0 shadow">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title fw-bold">Return Profile for Correction</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <p class="small text-muted mb-2">Provide feedback explaining what {{ $doc->name }} needs to adjust or verify before publication.</p>
+                                                            <label class="form-label small fw-bold">Feedback / Revision Instructions <span class="text-danger">*</span></label>
+                                                            <textarea name="publication_notes" rows="3" class="form-control" required placeholder="e.g. Please clarify board certification details and upload a higher-resolution portrait photo."></textarea>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                            <button type="submit" class="btn btn-sm btn-danger text-white">Return with Feedback</button>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @elseif($doc->is_published)
                                         <form method="POST" action="{{ route('admin.doctors.unpublish', $doc->id) }}" class="d-inline">
                                             @csrf
                                             <button type="submit" class="btn btn-sm btn-outline-warning" title="Hide profile from website">
@@ -133,7 +183,7 @@
                                             </button>
                                         </form>
                                     @else
-                                        <form method="POST" action="{{ route('admin.doctors.publish', $doc->id) }}" class="d-inline">
+                                        <form method="POST" action="{{ route('admin.doctors.approve', $doc->id) }}" class="d-inline">
                                             @csrf
                                             <button type="submit" class="btn btn-sm btn-success text-white" title="Approve and publish to public website">
                                                 <i class="bi bi-check-circle"></i> Publish

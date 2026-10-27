@@ -47,7 +47,23 @@ class Article extends Model
 
     public function coverUrl(): ?string
     {
-        return $this->cover_image_path ? Storage::disk('public')->url($this->cover_image_path) : null;
+        if (! $this->cover_image_path) {
+            return null;
+        }
+
+        if (str_starts_with($this->cover_image_path, 'http://') || str_starts_with($this->cover_image_path, 'https://')) {
+            return $this->cover_image_path;
+        }
+
+        if (Storage::disk('public')->exists($this->cover_image_path)) {
+            return Storage::disk('public')->url($this->cover_image_path);
+        }
+
+        if (file_exists(public_path($this->cover_image_path))) {
+            return asset($this->cover_image_path);
+        }
+
+        return null;
     }
 
     /** Collision-safe slug: title-based, suffixed -2, -3... when taken. */

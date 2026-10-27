@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Appointment;
-use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\Patient;
@@ -14,6 +13,7 @@ use App\Models\Visit;
 use Carbon\Carbon;
 use Database\Seeders\HospitalDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class PatientRegistrationAndTriageTest extends TestCase
@@ -21,10 +21,15 @@ class PatientRegistrationAndTriageTest extends TestCase
     use RefreshDatabase;
 
     protected User $superAdmin;
+
     protected User $receptionist;
+
     protected User $nurse;
+
     protected User $doctorUser;
+
     protected Department $department;
+
     protected Doctor $doctor;
 
     protected function setUp(): void
@@ -84,7 +89,7 @@ class PatientRegistrationAndTriageTest extends TestCase
         $responseDoctor = $this->actingAs($this->doctorUser)->get('/admin/patients');
         $responseDoctor->assertStatus(200);
 
-        \Illuminate\Support\Facades\Auth::guard('web')->logout();
+        Auth::guard('web')->logout();
         $responseGuest = $this->get('/admin/patients');
         $responseGuest->assertRedirect('/admin/login');
     }
@@ -139,7 +144,7 @@ class PatientRegistrationAndTriageTest extends TestCase
         $this->assertNotNull($patient->mrn);
         $this->assertEquals($this->receptionist->id, $patient->registered_by);
 
-        $response->assertRedirect('/admin/patients/' . $patient->id);
+        $response->assertRedirect('/admin/patients/'.$patient->id);
         $response->assertSessionHas('status');
 
         // Audit log created
@@ -219,7 +224,7 @@ class PatientRegistrationAndTriageTest extends TestCase
             'registered_by' => $this->receptionist->id,
         ]);
 
-        $response = $this->actingAs($this->receptionist)->get('/admin/patients/' . $patient->id);
+        $response = $this->actingAs($this->receptionist)->get('/admin/patients/'.$patient->id);
 
         $response->assertStatus(200);
         $response->assertSee($patient->mrn);
@@ -396,7 +401,7 @@ class PatientRegistrationAndTriageTest extends TestCase
             'priority' => 'standard',
             'status' => 'waiting_triage',
             'checked_in_by' => $this->receptionist->id,
-            'checked_in_at' => Carbon::now()->subMinutes(30),
+            'checked_in_at' => Carbon::today()->addHours(8),
         ]);
 
         Visit::create([
@@ -408,7 +413,7 @@ class PatientRegistrationAndTriageTest extends TestCase
             'priority' => 'emergency',
             'status' => 'waiting_triage',
             'checked_in_by' => $this->receptionist->id,
-            'checked_in_at' => Carbon::now()->subMinutes(5),
+            'checked_in_at' => Carbon::today()->addHours(8)->addMinutes(25),
         ]);
 
         $response = $this->actingAs($this->nurse)->get('/admin/triage');
@@ -445,7 +450,7 @@ class PatientRegistrationAndTriageTest extends TestCase
         ]);
 
         // Submit triage assessment
-        $response = $this->actingAs($this->nurse)->post('/admin/triage/' . $visit->id . '/assess', [
+        $response = $this->actingAs($this->nurse)->post('/admin/triage/'.$visit->id.'/assess', [
             'systolic_bp' => 125,
             'diastolic_bp' => 82,
             'pulse_rate' => 98,
@@ -472,12 +477,12 @@ class PatientRegistrationAndTriageTest extends TestCase
         $this->assertEquals(125, $triage->systolic_bp);
         $this->assertEquals(82, $triage->diastolic_bp);
         $this->assertEquals('125/82', $triage->blood_pressure);
-        $this->assertEquals(38.6, (float)$triage->temperature);
+        $this->assertEquals(38.6, (float) $triage->temperature);
         $this->assertEquals('very_urgent', $triage->triage_category);
         $this->assertEquals($this->nurse->id, $triage->triage_nurse_id);
 
         // Verify BMI calculation: 65 / (1.68^2) = 23.03 -> rounded to 23.0
-        $this->assertEquals(23.0, (float)$triage->bmi);
+        $this->assertEquals(23.0, (float) $triage->bmi);
 
         // Verify visit status updated
         $visit->refresh();

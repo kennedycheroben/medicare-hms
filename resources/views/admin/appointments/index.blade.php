@@ -166,7 +166,11 @@
                                 </div>
                             </td>
                             <td>
-                                <div class="fw-semibold text-dark">{{ $apt->department->name ?? 'Unassigned' }}</div>
+                                @if($apt->department)
+                                    <div class="fw-semibold text-dark">{{ $apt->department->name }}</div>
+                                @else
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle mb-1"><i class="bi bi-inbox me-1"></i>General Intake (Triage Needed)</span>
+                                @endif
                                 <div class="small text-muted">
                                     {{ $apt->doctor ? 'Dr. ' . $apt->doctor->name : 'Any Available Specialist' }}
                                 </div>

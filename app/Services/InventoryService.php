@@ -205,6 +205,11 @@ class InventoryService
                 actor: $performer
             );
 
+            $medicine = $lockedItem->medicine ?? Medicine::find($lockedItem->medicine_id);
+            if ($medicine) {
+                $this->checkAndNotifyLowStock($medicine);
+            }
+
             return [
                 'success' => true,
                 'message' => "Successfully dispensed {$quantityToDispense} units of {$lockedItem->medication_name}.",
@@ -279,7 +284,7 @@ class InventoryService
                     'reference_type' => 'otc_sale',
                     'reference_id' => $idempotencyKey,
                     'performed_by' => $performer->id,
-                    'reason' => "OTC Sale: {$customerName}" . ($paymentReference ? " (Ref: {$paymentReference})" : ''),
+                    'reason' => "OTC Sale: {$customerName}".($paymentReference ? " (Ref: {$paymentReference})" : ''),
                     'notes' => $notes ?: "Direct OTC dispensary sale to {$customerName}",
                     'created_at' => now(),
                 ]);
@@ -302,6 +307,8 @@ class InventoryService
                 outcome: 'success',
                 actor: $performer
             );
+
+            $this->checkAndNotifyLowStock($medicine);
 
             return [
                 'success' => true,
@@ -562,10 +569,29 @@ class InventoryService
                 actor: $performer
             );
 
+            if ($lockedBatch->medicine) {
+                $this->checkAndNotifyLowStock($lockedBatch->medicine);
+            }
+
             return [
                 'success' => true,
                 'message' => "Stock adjustment of {$quantity} units applied to Batch #{$lockedBatch->batch_number}.",
             ];
         });
+    }
+
+    /**
+     * Check if total available medicine stock is at or below reorder threshold and notify pharmacy staff.
+     */
+    protected function checkAndNotifyLowStock(Medicine $medicine): void
+    {
+        $currentStock = (int) $medicine->batches()
+            ->where('is_active', true)
+            ->where('expiry_date', '>=', today())
+            ->sum('quantity_current');
+
+        if ($currentStock <= $medicine->reorder_level) {
+            NotificationService::notifyPharmacyLowStock($medicine, $currentStock, $medicine->reorder_level);
+        }
     }
 }

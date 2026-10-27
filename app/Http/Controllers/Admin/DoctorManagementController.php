@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\DoctorReview;
+use App\Models\User;
 use App\Services\AuditService;
+use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class DoctorManagementController extends Controller
@@ -39,17 +40,21 @@ class DoctorManagementController extends Controller
                 $query->where('is_published', true);
             } elseif ($status === 'unpublished') {
                 $query->where('is_published', false);
+            } elseif (in_array($status, ['draft', 'pending_review', 'approved', 'needs_revision'])) {
+                $query->where('status', $status);
             }
         }
 
         $doctors = $query->orderBy('name')->paginate(15)->withQueryString();
         $departments = Department::where('is_active', true)->orderBy('name')->get();
         $pendingReviewsCount = DoctorReview::pending()->count();
+        $pendingProfilesCount = Doctor::where('status', 'pending_review')->count();
 
         return view('admin.doctors.index', [
             'doctors' => $doctors,
             'departments' => $departments,
             'pendingReviewsCount' => $pendingReviewsCount,
+            'pendingProfilesCount' => $pendingProfilesCount,
             'search' => $search,
             'departmentId' => $deptId,
             'status' => $status,
@@ -75,7 +80,7 @@ class DoctorManagementController extends Controller
      */
     public function update(Request $request, Doctor $doctor): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'hospital_director'])) {
@@ -119,11 +124,17 @@ class DoctorManagementController extends Controller
      */
     public function publish(Request $request, Doctor $doctor): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'hospital_director'])) {
             abort(403, 'Unauthorized. Publication approval requires Super Admin or Hospital Director authority.');
+        }
+
+        // Validate complete profile before approving publication
+        if (empty($doctor->name) || empty($doctor->specialty) || empty($doctor->qualifications) || empty($doctor->bio) || ! $doctor->department_id) {
+            return redirect()->back()
+                ->withErrors(['publication' => 'Cannot publish incomplete profile. Name, specialty, qualifications, biography, and department are required.']);
         }
 
         $validated = $request->validate([
@@ -131,6 +142,7 @@ class DoctorManagementController extends Controller
         ]);
 
         $doctor->update([
+            'status' => 'approved',
             'is_published' => true,
             'published_at' => now(),
             'approved_by' => $user->id,
@@ -149,8 +161,59 @@ class DoctorManagementController extends Controller
             actor: $user
         );
 
+        NotificationService::notifyDoctorProfileApproved($doctor);
+
         return redirect()->back()
             ->with('status', "Doctor profile for {$doctor->name} has been verified and published to the website.");
+    }
+
+    /**
+     * Dedicated approval endpoint (alias for publish).
+     */
+    public function approveProfile(Request $request, Doctor $doctor): RedirectResponse
+    {
+        return $this->publish($request, $doctor);
+    }
+
+    /**
+     * Return doctor profile for correction with feedback.
+     */
+    public function returnForCorrection(Request $request, Doctor $doctor): RedirectResponse
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if (! $user->hasRole(['super_admin', 'hospital_director'])) {
+            abort(403, 'Unauthorized. Review action requires Super Admin or Hospital Director authority.');
+        }
+
+        $validated = $request->validate([
+            'publication_notes' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        $doctor->update([
+            'status' => 'needs_revision',
+            'is_published' => false,
+            'publication_notes' => $validated['publication_notes'],
+        ]);
+
+        AuditService::record(
+            action: 'doctor.returned_for_correction',
+            resourceType: 'doctor',
+            resourceId: (string) $doctor->id,
+            details: [
+                'name' => $doctor->name,
+                'reason' => $validated['publication_notes'],
+                'reviewer' => $user->name,
+            ],
+            outcome: 'success',
+            actor: $user
+        );
+
+        NotificationService::notifyDoctorProfileReturned($doctor, $validated['publication_notes']);
+
+        return redirect()->back()
+            ->with('status', "Doctor profile for {$doctor->name} has been returned for correction.");
     }
 
     /**
@@ -158,7 +221,7 @@ class DoctorManagementController extends Controller
      */
     public function unpublish(Request $request, Doctor $doctor): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'hospital_director'])) {
@@ -167,6 +230,7 @@ class DoctorManagementController extends Controller
 
         $doctor->update([
             'is_published' => false,
+            'status' => 'draft',
             'publication_notes' => 'Unpublished by administrative action',
         ]);
 
@@ -217,7 +281,7 @@ class DoctorManagementController extends Controller
      */
     public function approveReview(Request $request, DoctorReview $review): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'hospital_director'])) {
@@ -255,7 +319,7 @@ class DoctorManagementController extends Controller
      */
     public function rejectReview(Request $request, DoctorReview $review): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'hospital_director'])) {

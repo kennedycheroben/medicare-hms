@@ -130,7 +130,7 @@
                             <li class="mb-2"><a href="{{ route('departments.show', 'pediatrics') }}" class="text-light text-decoration-none">Pediatrics & Neonatal Care</a></li>
                             <li class="mb-2"><a href="{{ route('departments.show', 'orthopedics') }}" class="text-light text-decoration-none">Orthopedic Surgery</a></li>
                             <li class="mb-2"><a href="{{ route('departments.show', 'oncology') }}" class="text-light text-decoration-none">Comprehensive Oncology</a></li>
-                            <li class="mb-2"><a href="{{ route('departments.show', 'emergency') }}" class="text-light text-decoration-none">Trauma & Emergency Care</a></li>
+                            <li class="mb-2"><a href="{{ route('departments.show', 'general-surgery') }}" class="text-light text-decoration-none">General & Trauma Surgery</a></li>
                         </ul>
                     </div>
 

@@ -284,6 +284,50 @@
                     </div>
                 </div>
 
+                <!-- Notifications Dropdown -->
+                @php
+                    $unreadNoticeCount = Auth::user() ? Auth::user()->unreadNotifications()->count() : 0;
+                    $recentNotices = Auth::user() ? Auth::user()->notifications()->take(5)->get() : collect();
+                @endphp
+                <div class="header-action dropdown notification-dropdown">
+                    <button class="header-action border-0 bg-transparent position-relative" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" type="button">
+                        <i class="bi bi-bell"></i>
+                        @if($unreadNoticeCount > 0)
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style="font-size: 0.65rem;">
+                                {{ $unreadNoticeCount > 99 ? '99+' : $unreadNoticeCount }}
+                            </span>
+                        @endif
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg p-0 rounded-4 border-0" style="width: 320px; max-width: 90vw;">
+                        <div class="d-flex align-items-center justify-content-between p-3 border-bottom bg-light rounded-top-4">
+                            <span class="fw-bold text-dark small">Notifications</span>
+                            <span class="badge bg-primary-subtle text-primary">{{ $unreadNoticeCount }} Unread</span>
+                        </div>
+                        <div class="list-group list-group-flush" style="max-height: 280px; overflow-y: auto;">
+                            @forelse($recentNotices as $notice)
+                                <a href="{{ route('admin.notifications.read', [$notice->id, 'navigate' => 1]) }}" class="list-group-item list-group-item-action p-3 {{ $notice->read_at ? 'opacity-75' : 'bg-primary-subtle bg-opacity-10 fw-semibold' }}">
+                                    <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                                        <small class="text-primary text-uppercase extra-small fw-bold">{{ $notice->data['category'] ?? 'System' }}</small>
+                                        <small class="text-muted extra-small">{{ $notice->created_at->diffForHumans() }}</small>
+                                    </div>
+                                    <div class="small text-dark mb-1 text-truncate">{{ $notice->data['title'] ?? 'Notification' }}</div>
+                                    <p class="mb-0 extra-small text-muted text-truncate">{{ $notice->data['message'] ?? '' }}</p>
+                                </a>
+                            @empty
+                                <div class="p-4 text-center text-muted small">
+                                    <i class="bi bi-bell-slash fs-4 d-block mb-1 text-secondary opacity-50"></i>
+                                    No notifications
+                                </div>
+                            @endforelse
+                        </div>
+                        <div class="p-2 border-top text-center bg-light rounded-bottom-4">
+                            <a href="{{ route('admin.notifications.index') }}" class="btn btn-sm btn-link text-decoration-none fw-semibold extra-small">
+                                View All Notifications
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Dark/Light Theme Toggle -->
                 <button class="header-action theme-toggle" title="Toggle Theme" type="button" aria-label="Toggle Theme">
                     <i class="bi bi-moon-stars theme-icon-dark"></i>
@@ -421,6 +465,15 @@
                         <span>Dashboard</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.notifications.index') ? 'active' : '' }}" href="{{ route('admin.notifications.index') }}" data-sidebar-tooltip="Notifications">
+                        <i class="ph-light ph-bell"></i>
+                        <span>Notifications</span>
+                        @if(Auth::user() && Auth::user()->unreadNotifications()->count() > 0)
+                            <span class="badge bg-danger rounded-pill ms-auto extra-small">{{ Auth::user()->unreadNotifications()->count() }}</span>
+                        @endif
+                    </a>
+                </li>
 
                 <li class="nav-heading"><span>Patients & Intake</span></li>
                 @if($isIntake)
@@ -462,6 +515,12 @@
                         <a class="nav-link {{ request()->routeIs('admin.consultations.*') ? 'active' : '' }}" href="{{ route('admin.consultations.index') }}" data-sidebar-tooltip="Doctor Consultations">
                             <i class="ph-light ph-stethoscope"></i>
                             <span>Doctor Consultations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('doctor.profile.*') ? 'active' : '' }}" href="{{ route('doctor.profile.edit') }}" data-sidebar-tooltip="My Profile">
+                            <i class="ph-light ph-user-circle"></i>
+                            <span>My Doctor Profile</span>
                         </a>
                     </li>
                 @endif
@@ -527,6 +586,13 @@
                         <a class="nav-link {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}" href="{{ route('admin.reports.index') }}" data-sidebar-tooltip="Executive Reports">
                             <i class="ph-light ph-chart-bar"></i>
                             <span>Executive Reports</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.notifications.oversight') ? 'active' : '' }}" href="{{ route('admin.notifications.oversight') }}" data-sidebar-tooltip="Notification Oversight">
+                            <i class="ph-light ph-bell-ringing"></i>
+                            <span>Notification Oversight</span>
                         </a>
                     </li>
                 @endif

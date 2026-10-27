@@ -77,17 +77,22 @@ class ArticleController extends Controller
         if ($article->isDirty('title') && ! $article->isPublished()) {
             $article->slug = Article::uniqueSlug($data['title'], $article->id); // published URLs stay stable
         }
+        $oldCover = null;
         if ($request->hasFile('cover_image')) {
-            $old = $article->cover_image_path;
+            $oldCover = $article->cover_image_path;
             $article->cover_image_path = $request->file('cover_image')->store('news-covers', 'public');
-            if ($old) {
-                Storage::disk('public')->delete($old);
-            }
         } elseif ($request->boolean('remove_cover') && $article->cover_image_path) {
-            Storage::disk('public')->delete($article->cover_image_path);
+            $oldCover = $article->cover_image_path;
             $article->cover_image_path = null;
         }
         $article->save();
+
+        if ($oldCover && $oldCover !== $article->cover_image_path) {
+            $stillReferenced = Article::where('cover_image_path', $oldCover)->where('id', '!=', $article->id)->exists();
+            if (! $stillReferenced && Storage::disk('public')->exists($oldCover)) {
+                Storage::disk('public')->delete($oldCover);
+            }
+        }
 
         AuditService::record('article.updated', 'article', (string) $article->id, ['title' => $article->title], 'success', Auth::user());
 

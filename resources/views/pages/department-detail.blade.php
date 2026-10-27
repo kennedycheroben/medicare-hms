@@ -33,7 +33,7 @@
 
                     @if ($department->image)
                         <div class="rounded-3 overflow-hidden shadow-sm mb-4" style="max-height: 400px;">
-                            <img src="{{ asset($department->image) }}" alt="{{ $department->name }}" class="w-100 h-100" style="object-fit: cover;">
+                            <img src="{{ asset($department->image) }}" alt="{{ $department->name }}" class="w-100 h-100" style="object-fit: cover;" onerror="this.onerror=null; this.parentElement.style.display='none';">
                         </div>
                     @endif
 

@@ -101,7 +101,11 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-muted small mb-1">Requested Department</label>
-                            <div class="fw-bold text-primary">{{ $appointment->department->name ?? 'Not specified' }}</div>
+                            @if($appointment->department)
+                                <div class="fw-bold text-primary">{{ $appointment->department->name }}</div>
+                            @else
+                                <div class="fw-bold text-warning"><i class="bi bi-inbox me-1"></i>General Intake (Awaiting Triage Assignment)</div>
+                            @endif
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-muted small mb-1">Assigned Specialist</label>

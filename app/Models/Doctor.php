@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
 class Doctor extends Model
 {
@@ -28,6 +31,7 @@ class Doctor extends Model
         'image',
         'is_available',
         'is_published',
+        'status',
         'published_at',
         'approved_by',
         'publication_notes',
@@ -41,6 +45,11 @@ class Doctor extends Model
         'experience_years' => 'integer',
         'review_count' => 'integer',
     ];
+
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class);
+    }
 
     public function department(): BelongsTo
     {
@@ -70,9 +79,27 @@ class Doctor extends Model
     /**
      * Scope for published doctor profiles visible to the public.
      */
-    public function scopePublished(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopePublished(Builder $query): Builder
     {
-        return $query->where('is_published', true)->where('is_available', true);
+        return $query->where('is_published', true)
+            ->where('is_available', true)
+            ->where('status', 'approved');
+    }
+
+    /**
+     * Get the resolved public URL for the doctor's profile photo or fallback.
+     */
+    public function imageUrl(): string
+    {
+        if ($this->image && Storage::disk('public')->exists($this->image)) {
+            return Storage::disk('public')->url($this->image);
+        }
+
+        if ($this->image && (str_starts_with($this->image, 'http') || str_starts_with($this->image, 'assets/'))) {
+            return asset($this->image);
+        }
+
+        return asset('assets/img/health/staff-1.webp');
     }
 
     /**

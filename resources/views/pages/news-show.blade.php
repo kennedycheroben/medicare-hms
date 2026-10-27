@@ -24,7 +24,7 @@
 
             <article>
                 @if ($article->coverUrl())
-                    <img src="{{ $article->coverUrl() }}" alt="" class="img-fluid rounded-4 mb-4 w-100" style="max-height: 420px; object-fit: cover;">
+                    <img src="{{ $article->coverUrl() }}" alt="{{ $article->title }}" class="img-fluid rounded-4 mb-4 w-100" style="max-height: 420px; object-fit: cover;" onerror="this.onerror=null; this.style.display='none';">
                 @endif
                 <p class="text-muted small">
                     <i class="bi bi-calendar3 me-1"></i>{{ optional($article->published_at)->format('F j, Y') ?? 'Not yet published' }}

@@ -188,17 +188,17 @@
                                 <!-- Department -->
                                 <div class="col-md-6">
                                     <label for="department_id" class="form-label small fw-bold">
-                                        Medical Department <span class="text-danger">*</span>
+                                        Medical Department <span class="text-muted">(Optional)</span>
                                     </label>
-                                    <select class="form-select @error('department_id') is-invalid @enderror" id="department_id" name="department_id" required>
-                                        <option value="">Select Medical Specialty...</option>
+                                    <select class="form-select @error('department_id') is-invalid @enderror" id="department_id" name="department_id">
+                                        <option value="">General Medical Intake / Unassigned (Hospital staff will triage)</option>
                                         @foreach ($departments as $dept)
                                             <option value="{{ $dept->id }}" {{ (old('department_id', $selectedDeptId) == $dept->id) ? 'selected' : '' }}>
                                                 {{ $dept->name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <small class="form-text text-muted" style="font-size: 0.75rem;">Choose the relevant clinical specialty</small>
+                                    <small class="form-text text-muted" style="font-size: 0.75rem;">Leave unselected if you are unsure which clinical specialty you need</small>
                                     @error('department_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -217,7 +217,7 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <small class="form-text text-muted" style="font-size: 0.75rem;">Leave blank to be assigned to the next available consultant</small>
+                                    <small class="form-text text-muted" style="font-size: 0.75rem;">Selecting a doctor will automatically align the medical department</small>
                                     @error('doctor_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -310,3 +310,35 @@
     </section>
 
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const deptSelect = document.getElementById('department_id');
+        const docSelect = document.getElementById('doctor_id');
+
+        if (!deptSelect || !docSelect) return;
+
+        // When doctor is selected, auto-select corresponding department
+        docSelect.addEventListener('change', function () {
+            const selectedOption = docSelect.options[docSelect.selectedIndex];
+            const deptId = selectedOption.getAttribute('data-department');
+
+            if (deptId && deptSelect.value !== deptId) {
+                deptSelect.value = deptId;
+            }
+        });
+
+        // When department is selected, warn or reset if selected doctor does not belong to it
+        deptSelect.addEventListener('change', function () {
+            const selectedDeptId = deptSelect.value;
+            const selectedDocOption = docSelect.options[docSelect.selectedIndex];
+            const docDeptId = selectedDocOption.getAttribute('data-department');
+
+            if (selectedDeptId && docDeptId && docDeptId !== selectedDeptId) {
+                docSelect.value = '';
+            }
+        });
+    });
+</script>
+@endpush

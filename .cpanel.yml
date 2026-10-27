@@ -11,5 +11,6 @@ deployment:
     - /bin/cp -R public/assets/. ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/assets/
     - /bin/cp -R public/build/. ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/build/
     - /bin/bash -c "if [ ! -f ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/.htaccess ]; then /bin/cp public/.htaccess ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/.htaccess; fi"
+    - /bin/bash -c "if [ ! -e ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage ] && [ -d /home/xqtrqexj/medicare-hms-app/storage/app/public ]; then /bin/ln -s /home/xqtrqexj/medicare-hms-app/storage/app/public ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage; fi"
     - /bin/chmod 755 ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/admin-assets ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/assets ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/build
     - /bin/chmod 644 ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/index.php ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/favicon.ico ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/robots.txt

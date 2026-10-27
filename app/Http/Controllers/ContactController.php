@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContactInquiry;
+use App\Rules\ValidPhoneNumber;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -18,7 +20,7 @@ class ContactController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:100'],
             'email' => ['required', 'email', 'max:100'],
-            'phone' => ['nullable', 'string', new \App\Rules\ValidPhoneNumber()],
+            'phone' => ['nullable', 'string', new ValidPhoneNumber],
             'department' => ['nullable', 'string', 'max:100'],
             'subject' => ['required', 'string', 'min:4', 'max:150'],
             'message' => ['required', 'string', 'min:10', 'max:2500'],
@@ -32,7 +34,7 @@ class ContactController extends Controller
 
         // Generate unique ticket number (INQ-YYYYMMDD-XXXX)
         do {
-            $ticketNumber = 'INQ-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+            $ticketNumber = 'INQ-'.date('Ymd').'-'.strtoupper(Str::random(5));
         } while (ContactInquiry::where('ticket_number', $ticketNumber)->exists());
 
         $inquiry = ContactInquiry::create([
@@ -45,8 +47,10 @@ class ContactController extends Controller
             'message' => $validated['message'],
             'status' => 'new',
             'ip_address' => $request->ip(),
-            'user_agent' => substr((string)$request->userAgent(), 0, 500),
+            'user_agent' => substr((string) $request->userAgent(), 0, 500),
         ]);
+
+        NotificationService::notifyContactEnquiry($inquiry);
 
         return redirect()->route('contact')
             ->with('success', "Thank you, {$inquiry->name}! Your enquiry has been received under Ticket #{$inquiry->ticket_number}. Our patient coordination team typically responds within 2 hours.");
