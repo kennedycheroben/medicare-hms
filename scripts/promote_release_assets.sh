@@ -200,10 +200,12 @@ if [ "${COLLISIONS}" -gt 0 ] && [ "${ALLOW_REPLACE}" != "1" ]; then
 fi
 
 # 7. Pre-Sync Backup (Only executed when changes are actually approved)
+PRESERVED_BACKUPS=()
 if [ "$(ls -A "${WEB_ROOT}" 2>/dev/null)" ]; then
     echo "Creating full defensive backup of web root to: ${BACKUP_DIR}..."
     cp -a "${WEB_ROOT}" "${BACKUP_DIR}"
-    echo "Backup completed: ${BACKUP_DIR}"
+    PRESERVED_BACKUPS+=("${BACKUP_DIR}")
+    echo "Full web root backup created at: ${BACKUP_DIR}"
 fi
 
 # 8. Safe Promotion of Approved Staged Items
@@ -218,18 +220,40 @@ for item in "${ALL_STAGED_ITEMS[@]}"; do
     if [ -d "${STAGING_DIR}/${item}" ]; then
         if [ -d "${DEST_ITEM}" ]; then
             # Safe replacement of managed directory: atomic rename/swap
-            mv "${DEST_ITEM}" "${DEST_ITEM}_prev_${TIMESTAMP}"
+            # Retain previous live directory for immediate rollback safety; do NOT delete immediately.
+            PREV_BACKUP="${DEST_ITEM}_prev_${TIMESTAMP}"
+            mv "${DEST_ITEM}" "${PREV_BACKUP}"
             cp -a "${STAGING_DIR}/${item}" "${DEST_ITEM}"
-            rm -rf "${DEST_ITEM}_prev_${TIMESTAMP}"
+            PRESERVED_BACKUPS+=("${PREV_BACKUP}")
+            echo "  - Promoted directory: ${item}/ (previous version preserved at: ${PREV_BACKUP})"
         else
             cp -a "${STAGING_DIR}/${item}" "${DEST_ITEM}"
+            echo "  - Promoted directory: ${item}/ (new)"
         fi
     else
         # File copy with permission preservation
         cp -a "${STAGING_DIR}/${item}" "${DEST_ITEM}"
+        echo "  - Promoted file: ${item}"
     fi
-    echo "  - Promoted: ${item}"
 done
 
-echo "SUCCESS: Web document root safely updated. Existing cPanel handlers preserved and backed up to ${BACKUP_DIR}."
+echo ""
+echo "========================================================="
+echo "PROMOTION SUMMARY & BACKUP RETENTION POLICY"
+echo "========================================================="
+echo "SUCCESS: Web document root safely updated."
+echo "Existing cPanel handlers preserved in .htaccess."
+echo ""
+echo "RETAINED BACKUPS FOR ROLLBACK:"
+for b in "${PRESERVED_BACKUPS[@]}"; do
+    echo "  - ${b}"
+done
+echo ""
+echo "IMPORTANT: All backups are permanently preserved until a human operator"
+echo "independently verifies the live application and explicitly approves cleanup."
+echo "To roll back immediately if any issue is detected:"
+if [ -d "${BACKUP_DIR:-}" ]; then
+    echo "  cp -a \"${BACKUP_DIR}/.\" \"${WEB_ROOT}/\""
+fi
+echo "========================================================="
 exit 0

@@ -5,7 +5,8 @@
 - **Stack:** PHP 8.3 / 8.4, MariaDB 10.4+ / MySQL 8.0, Apache/LiteSpeed, Laravel 13, Bootstrap, Blade
 - **Production Domain:** `medicare.kennedycheroben.co.ke` (HMS Demonstration Platform)
 - **cPanel Username:** `xqtrqexj`
-- **Target Git Branch:** `main` (Verified Release Baseline)
+- **Target Git Branch:** `fix/release-readiness-audit` (Approved Release Candidate Branch)
+- **Deployment Safety Rule:** All audit fixes, demo safeguards, safe promotion scripts, and permission hardening are committed exclusively on `fix/release-readiness-audit`. **DO NOT** deploy from `main` or merge into `main` without explicit owner authorization.
 - **Target Application Location:** `/home/xqtrqexj/medicare-hms-app` (strictly outside document root)
 - **Public Web Document Root:** `/home/xqtrqexj/medicare.kennedycheroben.co.ke`
 
@@ -15,6 +16,7 @@
 > **SAFETY & EXECUTION BOUNDARY NOTICE**  
 > This runbook is divided into **Preparation Steps** (safe, pre-deployment local packaging and verification) and **Execution Steps** (production server commands).  
 > **DO NOT** execute any production server commands until formal authorization is granted, maintenance windows are scheduled, and backups are confirmed.
+> **DO NOT** deploy from `main`. The approved release candidate is on `fix/release-readiness-audit`. Merging into `main` requires explicit owner authorization.
 
 ---
 
@@ -65,15 +67,18 @@ Ensure the local release branch is up to date, passes all automated tests, and h
 ```bash
 # Verify branch
 git branch --show-current
-# Expected: main (or dedicated verified release/audit branch)
+# Expected: fix/release-readiness-audit
 
-# Verify status
+# Verify commit SHA
+git rev-parse HEAD
+# Record this exact commit SHA in the deployment audit record
+
+# Verify status (must be clean, no uncommitted changes)
 git status
-# Must be clean, no uncommitted changes
 
 # Run full automated test suite against isolated test database
 php artisan test
-# Verification Gate: Must report 100% pass (164 tests, 1,365 assertions, 0 failures)
+# Verification Gate: Must report 100% pass (174 tests, 1,455 assertions, 0 failures)
 ```
 
 ### Step A.2: Compile Production Frontend Assets
@@ -125,15 +130,20 @@ Log in via SSH or cPanel Terminal:
 
 #### Method 1: Git-Based Deployment (Recommended)
 ```bash
-# Clone the verified release branch directly outside document root
-git clone -b main https://github.com/kennedycheroben/medicare-hms.git /home/xqtrqexj/medicare-hms-app
+# Clone the verified release candidate branch directly outside document root:
+git clone -b fix/release-readiness-audit https://github.com/kennedycheroben/medicare-hms.git /home/xqtrqexj/medicare-hms-app
 
-# For subsequent updates:
+# For subsequent updates on this branch:
 cd /home/xqtrqexj/medicare-hms-app
-git fetch origin main
-git checkout main
-git pull origin main
+git fetch origin fix/release-readiness-audit
+git checkout fix/release-readiness-audit
+git pull origin fix/release-readiness-audit
 ```
+
+> [!IMPORTANT]
+> **Branch & Commit Boundary Enforcement:**
+> The approved release fixes (demo safety disclaimers, emergency link suppression, hardened promotion, least-privilege permissions, and defensive symlink management) exist on `fix/release-readiness-audit`.
+> **DO NOT** deploy from `main` while changes exist only on this audit branch. **DO NOT** merge into `main` without explicit owner authorization.
 
 #### Method 2: Release Archive Upload (Fallback)
 If SSH/Git is unavailable, upload `medicare-hms-deploy.tar.gz` to `/home/xqtrqexj/medicare-hms-app` and extract:
@@ -144,112 +154,41 @@ tar -xzvf medicare-hms-deploy.tar.gz
 rm medicare-hms-deploy.tar.gz
 ```
 
-### Step B.4: Configure Web Document Root, Inspect Collisions & Preserve cPanel Configuration
-The public web document root is `/home/xqtrqexj/medicare.kennedycheroben.co.ke`.
+### Step B.4: Safely Promote Built Assets to Public Web Root
+Synchronize public frontend assets (`admin-assets`, `assets`, `build`, `favicon.ico`, `robots.txt`, and front controller `index.php`) from the application build into the public document root `/home/xqtrqexj/medicare.kennedycheroben.co.ke/`.
 
 > [!WARNING]
-> **Safety Protocol & Non-Silent Overwrite Policy:**
-> - Never execute blind `cp -r` or `cp -a` commands directly into the production web root. Having a pre-sync backup is essential, but it does **not** make silent file replacement acceptable.
-> - Every destination file and directory must be inspected individually before modification.
-> - If an existing destination file or directory differs from the release build, the process **must stop immediately for human review**.
-> - Operators must explicitly review differences and provide explicit approval (`ALLOW_REPLACE=1` or `--confirm-replace`) before any file is replaced.
-> - Truehost cPanel-generated `.htaccess` configurations (such as PHP version handlers) must be preserved; never replace `.htaccess` wholesale.
+> **Mandatory Non-Silent Overwrite Policy & Canonical Script Enforcement:**
+> - Never execute blind copy commands (such as raw `cp -r` or uninspected recursive directory copying) directly into the production web root. Having a backup does **not** make silent overwrites acceptable.
+> - Asset promotion **must** be executed using the canonical tool: `./scripts/promote_release_assets.sh`. Manual shell alternatives are strictly forbidden because they bypass collision gates, retention safeguards, and cPanel `.htaccess` preservation.
+> - The script stages assets in isolation, inspects each destination item individually, preserves cPanel-generated `.htaccess` handlers, and **halts with an error if any destination file or directory would be replaced or merged ambiguously**.
+> - Operators must explicitly review differences and provide explicit approval (`ALLOW_REPLACE=1` or `--confirm-replace`) before any colliding destination is modified.
+> - All backups (`backup_webroot_<timestamp>` and `<item>_prev_<timestamp>`) are permanently retained until a human operator verifies the site and explicitly approves cleanup.
 
-#### Option 1: Execute Verified Script (Recommended)
 ```bash
 cd /home/xqtrqexj/medicare-hms-app
 
-# 1. First run inspection in dry-run mode (no files modified)
+# 1. Preview changes and inspect destination web root in dry-run mode (no files modified):
 ./scripts/promote_release_assets.sh --dry-run
 
-# 2. If collisions exist, inspect differences. When replacement is verified and intended:
+# 2. Inspect collision manifest. If collisions are expected and verified for this release,
+# approve replacement explicitly:
 ALLOW_REPLACE=1 ./scripts/promote_release_assets.sh
 ```
 
-#### Option 2: Step-by-Step SSH Procedure
-If executing manually in the shell:
+#### What `promote_release_assets.sh` Executes:
+1. **Isolated Staging:** Copies `admin-assets/`, `assets/`, `build/`, `index.php`, `favicon.ico`, and `robots.txt` into an isolated temporary staging directory (`staging_webroot_<timestamp>`).
+2. **cPanel `.htaccess` Preservation:** Reads existing `${WEB_ROOT}/.htaccess` to preserve cPanel-generated PHP handlers (`# php -- BEGIN cPanel-generated handler ... # php -- END cPanel-generated handler`) and merges Laravel front-controller rewrite rules without clobbering.
+3. **Collision Detection:** Computes cryptographic/byte comparisons (`cmp -s` and `diff -qr`) against each destination item. Categorizes each item as `[NEW]`, `[UNCHANGED]`, `[COLLISION]`, or `[PRESERVED]`.
+4. **Safety Gate:** If collisions are found and `ALLOW_REPLACE=1` is not set, halts execution immediately with an exit code of `1` and lists the conflicting items.
+5. **Full Web Root Backup:** Once replacement is explicitly approved, creates a complete timestamped copy of the web root (`backup_webroot_<timestamp>`) before modifying any files.
+6. **Atomic Directory Swap & Backup Retention:** Replaces managed directories by renaming the live directory to `<item>_prev_<timestamp>` and moving the new version in place. **Does not delete `<item>_prev_<timestamp>`**; preserves it for immediate rollback.
+7. **Rollback Instructions:** Displays retained backup paths and exact rollback commands upon completion. Backups are retained until manual verification and explicit operator cleanup.
 
+To roll back immediately if an issue is detected during post-deployment verification:
 ```bash
-set -euo pipefail
-
-APP_DIR="/home/xqtrqexj/medicare-hms-app"
-WEB_ROOT="/home/xqtrqexj/medicare.kennedycheroben.co.ke"
-ALLOW_REPLACE="${ALLOW_REPLACE:-0}"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/home/xqtrqexj/backup_webroot_${TIMESTAMP}"
-STAGING_DIR="/home/xqtrqexj/staging_webroot_${TIMESTAMP}"
-
-# 1. Pre-flight sanity checks
-if [ ! -d "${APP_DIR}/public" ]; then
-    echo "ERROR: Source directory ${APP_DIR}/public does not exist. Aborting." >&2
-    exit 1
-fi
-
-mkdir -p "${WEB_ROOT}" "${STAGING_DIR}"
-
-# 2. Stage new release assets in isolation
-MANAGED_ITEMS=("admin-assets" "assets" "build" "index.php" "favicon.ico" "robots.txt")
-for item in "${MANAGED_ITEMS[@]}"; do
-    if [ -e "${APP_DIR}/public/${item}" ]; then
-        cp -r "${APP_DIR}/public/${item}" "${STAGING_DIR}/${item}"
-    fi
-done
-
-# 3. Preserve existing cPanel .htaccess directives
-if [ -f "${WEB_ROOT}/.htaccess" ]; then
-    cp "${WEB_ROOT}/.htaccess" "${STAGING_DIR}/.htaccess"
-    if ! grep -q "RewriteEngine On" "${STAGING_DIR}/.htaccess"; then
-        echo -e "\n# --- Laravel Front Controller Directives (Added ${TIMESTAMP}) ---" >> "${STAGING_DIR}/.htaccess"
-        cat "${APP_DIR}/public/.htaccess" >> "${STAGING_DIR}/.htaccess"
-    fi
-else
-    cp "${APP_DIR}/public/.htaccess" "${STAGING_DIR}/.htaccess"
-fi
-
-# 4. Individual Destination Inspection & Collision Gate
-COLLISIONS=0
-for item in "${MANAGED_ITEMS[@]}" ".htaccess"; do
-    DEST_PATH="${WEB_ROOT}/${item}"
-    if [ -e "${DEST_PATH}" ]; then
-        if [ -d "${DEST_PATH}" ] && ! diff -qr "${STAGING_DIR}/${item}" "${DEST_PATH}" >/dev/null 2>&1; then
-            echo "COLLISION DETECTED: ${item}/ differs from staged release."
-            COLLISIONS=$((COLLISIONS + 1))
-        elif [ -f "${DEST_PATH}" ] && ! cmp -s "${STAGING_DIR}/${item}" "${DEST_PATH}"; then
-            echo "COLLISION DETECTED: ${item} differs from staged release."
-            COLLISIONS=$((COLLISIONS + 1))
-        fi
-    fi
-done
-
-# 5. Stop for Human Review if Replacements are Required
-if [ "${COLLISIONS}" -gt 0 ] && [ "${ALLOW_REPLACE}" != "1" ]; then
-    echo "ERROR: Destination contains ${COLLISIONS} item(s) that would be modified or overwritten." >&2
-    echo "Silent replacement blocked. Review differences and rerun with ALLOW_REPLACE=1 to approve replacement." >&2
-    rm -rf "${STAGING_DIR}"
-    exit 1
-fi
-
-# 6. Create Pre-Sync Backup and Promote Only Approved Items
-if [ "$(ls -A "${WEB_ROOT}" 2>/dev/null)" ]; then
-    echo "Backing up web root to ${BACKUP_DIR}..."
-    cp -a "${WEB_ROOT}" "${BACKUP_DIR}"
-fi
-
-for item in "${MANAGED_ITEMS[@]}" ".htaccess"; do
-    if [ -e "${STAGING_DIR}/${item}" ]; then
-        if [ -d "${STAGING_DIR}/${item}" ] && [ -d "${WEB_ROOT}/${item}" ]; then
-            mv "${WEB_ROOT}/${item}" "${WEB_ROOT}/${item}_prev_${TIMESTAMP}"
-            cp -a "${STAGING_DIR}/${item}" "${WEB_ROOT}/${item}"
-            rm -rf "${WEB_ROOT}/${item}_prev_${TIMESTAMP}"
-        else
-            cp -a "${STAGING_DIR}/${item}" "${WEB_ROOT}/${item}"
-        fi
-        echo "Promoted: ${item}"
-    fi
-done
-
-rm -rf "${STAGING_DIR}"
-echo "Web root safely updated. Existing files preserved."
+# Roll back public web root from retained backup:
+cp -a /home/xqtrqexj/backup_webroot_<TIMESTAMP>/. /home/xqtrqexj/medicare.kennedycheroben.co.ke/
 ```
 
 ### Step B.5: Install Production Dependencies (Composer)
@@ -318,92 +257,25 @@ Configure permissions and safely establish the public media storage symlink.
 > - Do **not** silently overwrite an existing physical directory at the destination. An existing directory may contain uploaded media; stop and require explicit confirmation (`CONFIRM_DIR_MIGRATION=1`) to back up and link.
 > - Broken or dangling symlinks must be surfaced and require operator confirmation to remove and re-point.
 
-#### Option 1: Execute Verified Script (Recommended)
 ```bash
 cd /home/xqtrqexj/medicare-hms-app
 
-# Run defensive storage symlink configurator:
+# Run defensive storage symlink configurator and apply least-privilege permissions:
 ./scripts/configure_storage_symlink.sh
 ```
 
-#### Option 2: Step-by-Step SSH Procedure
-```bash
-set -euo pipefail
-
-APP_DIR="/home/xqtrqexj/medicare-hms-app"
-WEB_ROOT="/home/xqtrqexj/medicare.kennedycheroben.co.ke"
-STORAGE_TARGET="${APP_DIR}/storage/app/public"
-STORAGE_LINK="${WEB_ROOT}/storage"
-CONFIRM_STALE_SYMLINK="${CONFIRM_STALE_SYMLINK:-0}"
-CONFIRM_DIR_MIGRATION="${CONFIRM_DIR_MIGRATION:-0}"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-
-# 1. Apply least-privilege permissions (755 directories / 644 files)
-find "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache" -type d -exec chmod 755 {} +
-find "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache" -type f -exec chmod 644 {} +
-if [ -f "${APP_DIR}/.env" ]; then
-    chmod 600 "${APP_DIR}/.env"
-fi
-
-# 2. Validate source storage target exists
-if [ ! -d "${STORAGE_TARGET}" ]; then
-    mkdir -p "${STORAGE_TARGET}"
-    chmod 755 "${STORAGE_TARGET}"
-fi
-
-# 3. Evaluate destination state
-if [ -L "${STORAGE_LINK}" ]; then
-    CURRENT_DEST=$(readlink "${STORAGE_LINK}" || true)
-    CURRENT_CANONICAL=$(readlink -f "${STORAGE_LINK}" 2>/dev/null || true)
-    EXPECTED_CANONICAL=$(readlink -f "${STORAGE_TARGET}" 2>/dev/null || true)
-
-    if [ "${CURRENT_CANONICAL}" = "${EXPECTED_CANONICAL}" ] && [ -d "${STORAGE_LINK}" ]; then
-        echo "STATUS: [HEALTHY] Symlink correctly points to ${STORAGE_TARGET}. No change required."
-        exit 0
-    elif [ -e "${STORAGE_LINK}" ]; then
-        echo "ERROR: Destination symlink points to alternate active target: ${CURRENT_DEST}" >&2
-        if [ "${CONFIRM_STALE_SYMLINK}" != "1" ]; then
-            echo "SAFETY STOP: Automatic replacement blocked. Review target and rerun with CONFIRM_STALE_SYMLINK=1." >&2
-            exit 1
-        fi
-        rm "${STORAGE_LINK}"
-        ln -s "${STORAGE_TARGET}" "${STORAGE_LINK}"
-    else
-        echo "WARNING: Broken/dangling symlink detected: ${CURRENT_DEST}" >&2
-        if [ "${CONFIRM_STALE_SYMLINK}" != "1" ]; then
-            echo "SAFETY STOP: Rerun with CONFIRM_STALE_SYMLINK=1 to remove broken link and recreate." >&2
-            exit 1
-        fi
-        rm "${STORAGE_LINK}"
-        ln -s "${STORAGE_TARGET}" "${STORAGE_LINK}"
-    fi
-
-elif [ -d "${STORAGE_LINK}" ]; then
-    echo "WARNING: Destination is an existing physical directory (not a symlink)." >&2
-    if [ "${CONFIRM_DIR_MIGRATION}" != "1" ]; then
-        echo "SAFETY STOP: Potential media data loss. Review files in ${STORAGE_LINK} and rerun with CONFIRM_DIR_MIGRATION=1." >&2
-        exit 1
-    fi
-    mv "${STORAGE_LINK}" "${STORAGE_LINK}_dir_backup_${TIMESTAMP}"
-    ln -s "${STORAGE_TARGET}" "${STORAGE_LINK}"
-    echo "Physical directory backed up to ${STORAGE_LINK}_dir_backup_${TIMESTAMP}."
-
-elif [ -e "${STORAGE_LINK}" ]; then
-    echo "ERROR: Destination ${STORAGE_LINK} is an unexpected file/special node. Stopping for human review." >&2
-    exit 1
-
-else
-    ln -s "${STORAGE_TARGET}" "${STORAGE_LINK}"
-fi
-
-# 4. Final verification
-if [ -L "${STORAGE_LINK}" ] && [ -d "${STORAGE_LINK}" ]; then
-    echo "SUCCESS: Storage symlink verified: ${STORAGE_LINK} -> $(readlink "${STORAGE_LINK}")"
-else
-    echo "ERROR: Storage symlink verification failed." >&2
-    exit 1
-fi
-```
+#### What `configure_storage_symlink.sh` Enforces:
+1. **Least-Privilege Shared Hosting Permissions:**
+   - Recursively sets `755` (`u=rwx,go=rx`) on directories in `storage/` and `bootstrap/cache/`.
+   - Recursively sets `644` (`u=rw,go=r`) on files in `storage/` and `bootstrap/cache/`.
+   - Hardens `.env` with `600` (`u=rw,go=`) so only the application user can read secrets.
+   - Eliminates group-write (`775` / `664`) to prevent suPHP Apache 500 errors.
+2. **Safe Destination Handling & Confirmation Gates:**
+   - **Healthy Link:** If `${WEB_ROOT}/storage` already points to the expected storage target, confirms status and exits `0` without making changes.
+   - **Unexpected Target:** If the link points to an unexpected active target, halts execution and exits `1`. Requires explicit operator confirmation: `CONFIRM_STALE_SYMLINK=1 ./scripts/configure_storage_symlink.sh`.
+   - **Broken Symlink:** If the link is dangling/broken, halts execution and requires `CONFIRM_STALE_SYMLINK=1` to remove and re-point.
+   - **Physical Directory:** If a physical directory exists (potential user upload loss), halts execution and exits `1`. Requires `CONFIRM_DIR_MIGRATION=1 ./scripts/configure_storage_symlink.sh` to create a timestamped backup before linking.
+   - **Unknown / Special Nodes:** Exits `1` immediately and demands human review.
 
 ### Step C.5: Cache Configuration, Routes, and Views
 Optimize runtime performance on shared hosting:

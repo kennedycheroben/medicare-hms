@@ -208,11 +208,15 @@ class DemoModeSafetyTest extends TestCase
         $tempWebRoot = $baseTemp . '/webroot';
 
         mkdir($tempApp . '/public/admin-assets', 0755, true);
+        mkdir($tempApp . '/public/assets', 0755, true);
+        file_put_contents($tempApp . '/public/assets/style.css', '/* release v2.0 */');
         file_put_contents($tempApp . '/public/index.php', '<?php echo "release v2.0";');
         file_put_contents($tempApp . '/public/robots.txt', 'User-agent: *');
         file_put_contents($tempApp . '/public/.htaccess', 'RewriteEngine On');
 
         mkdir($tempWebRoot, 0755, true);
+        mkdir($tempWebRoot . '/assets', 0755, true);
+        file_put_contents($tempWebRoot . '/assets/style.css', '/* existing custom style */');
         file_put_contents($tempWebRoot . '/index.php', '<?php echo "existing custom code";');
 
         $scriptPath = base_path('scripts/promote_release_assets.sh');
@@ -232,11 +236,16 @@ class DemoModeSafetyTest extends TestCase
         $this->assertStringContainsString('SAFETY STOP', $process->getErrorOutput());
         $this->assertStringContainsString('ALLOW_REPLACE=1', $process->getErrorOutput());
 
-        // Verify existing destination file was NOT overwritten
+        // Verify existing destination file and directory were NOT overwritten
         $this->assertEquals(
             '<?php echo "existing custom code";',
             file_get_contents($tempWebRoot . '/index.php'),
             'Existing destination file must not be silently overwritten.'
+        );
+        $this->assertEquals(
+            '/* existing custom style */',
+            file_get_contents($tempWebRoot . '/assets/style.css'),
+            'Existing destination directory must not be silently overwritten.'
         );
 
         // 2. Run WITH explicit approval (ALLOW_REPLACE=1)
@@ -258,6 +267,27 @@ class DemoModeSafetyTest extends TestCase
             file_get_contents($tempWebRoot . '/index.php'),
             'Destination file must be updated to staged release after approval.'
         );
+        $this->assertEquals(
+            '/* release v2.0 */',
+            file_get_contents($tempWebRoot . '/assets/style.css'),
+            'Destination directory content must be updated to staged release after approval.'
+        );
+
+        // 3. Verify backup retention: previous live asset directory must be preserved, not deleted immediately
+        $prevBackups = glob($tempWebRoot . '/assets_prev_*');
+        $this->assertNotEmpty($prevBackups, 'Previous asset directory backup must exist on disk.');
+        $this->assertFileExists($prevBackups[0] . '/style.css');
+        $this->assertEquals(
+            '/* existing custom style */',
+            file_get_contents($prevBackups[0] . '/style.css'),
+            'Previous asset directory backup must retain the prior content for rollback.'
+        );
+
+        // Verify web root backup was created and retained
+        $webrootBackups = glob($baseTemp . '/backup_webroot_*');
+        $this->assertNotEmpty($webrootBackups, 'Full web root backup must exist on disk.');
+        $this->assertStringContainsString('RETAINED BACKUPS FOR ROLLBACK', $approvedProcess->getOutput());
+        $this->assertStringContainsString('permanently preserved until a human operator', $approvedProcess->getOutput());
 
         $this->removeDirectory($baseTemp);
     }
@@ -510,5 +540,14 @@ class DemoModeSafetyTest extends TestCase
         $this->assertStringContainsString('755', $runbookContent);
         $this->assertStringContainsString('644', $runbookContent);
         $this->assertStringContainsString('600', $runbookContent);
+
+        // 5. Must enforce deployment from fix/release-readiness-audit and forbid main
+        $this->assertStringContainsString('fix/release-readiness-audit', $runbookContent);
+        $this->assertStringContainsString('deploy from `main`', $runbookContent);
+        $this->assertStringNotContainsString('git clone -b main', $runbookContent);
+
+        // 6. Must not contain duplicate manual asset promotion procedure bypassing scripts/promote_release_assets.sh
+        $this->assertStringNotContainsString('Option 2: Step-by-Step SSH Procedure', $runbookContent);
+        $this->assertStringContainsString('promote_release_assets.sh', $runbookContent);
     }
 }
