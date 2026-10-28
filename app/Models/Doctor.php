@@ -107,8 +107,10 @@ class Doctor extends Model
             return asset($this->image);
         }
 
-        if (Storage::disk('public')->exists($this->image)) {
-            return Storage::disk('public')->url($this->image);
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $publicStorage */
+        $publicStorage = Storage::disk('public');
+        if ($publicStorage->exists($this->image)) {
+            return $publicStorage->url($this->image);
         }
 
         if (str_starts_with($this->image, 'doctors/')) {

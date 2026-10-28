@@ -34,7 +34,7 @@
                     <!-- Profile Header Card -->
                     <div class="card border-0 shadow-sm p-4 rounded-4 mb-4 bg-white">
                         <div class="d-flex flex-column flex-sm-row gap-4 align-items-center align-items-sm-start">
-                            <img src="{{ $doctor->imageUrl() }}" alt="{{ $doctor->name }}" class="rounded-4 img-fluid shadow" style="width: 170px; height: 200px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/img/health/staff-1.webp') }}';">
+                            <img src="{{ $doctor->imageUrl() }}" alt="{{ $doctor->name }}" class="rounded-4 img-fluid shadow" style="width: 170px; height: 200px; object-fit: cover;" onerror="this.onerror=null; this.src='/assets/img/health/staff-1.webp';">
                             <div class="flex-grow-1 text-center text-sm-start">
                                 @if ($doctor->department)
                                     <a href="{{ route('departments.show', $doctor->department->slug) }}" class="badge bg-primary-subtle text-primary border text-decoration-none mb-2">
@@ -226,7 +226,7 @@
                                 @foreach ($relatedDoctors as $colleague)
                                     <div class="col-md-4">
                                         <div class="card h-100 border-0 shadow-sm p-3 text-center bg-white">
-                                            <img src="{{ $colleague->imageUrl() }}" alt="{{ $colleague->name }}" class="rounded-circle mx-auto mb-2" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/img/health/staff-3.webp') }}';">
+                                            <img src="{{ $colleague->imageUrl() }}" alt="{{ $colleague->name }}" class="rounded-circle mx-auto mb-2" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.onerror=null; this.src='/assets/img/health/staff-3.webp';">
                                             <h6 class="fw-bold mb-1">
                                                 <a href="{{ route('doctors.show', $colleague->id) }}" class="text-decoration-none text-dark">
                                                     {{ $colleague->name }}

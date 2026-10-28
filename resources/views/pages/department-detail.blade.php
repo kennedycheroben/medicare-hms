@@ -77,7 +77,7 @@
                             @forelse ($department->doctors as $doctor)
                                 <div class="col-md-6">
                                     <div class="card h-100 border-0 shadow-sm p-3 rounded-3 d-flex flex-row gap-3 bg-white">
-                                        <img src="{{ $doctor->imageUrl() }}" alt="{{ $doctor->name }}" class="rounded flex-shrink-0" style="width: 90px; height: 110px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/img/health/staff-1.webp') }}';">
+                                        <img src="{{ $doctor->imageUrl() }}" alt="{{ $doctor->name }}" class="rounded flex-shrink-0" style="width: 90px; height: 110px; object-fit: cover;" onerror="this.onerror=null; this.src='/assets/img/health/staff-1.webp';">
                                         <div class="d-flex flex-column justify-content-between flex-grow-1">
                                             <div>
                                                 <h5 class="fw-bold mb-1 fs-6">

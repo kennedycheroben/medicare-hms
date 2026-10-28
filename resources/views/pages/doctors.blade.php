@@ -78,7 +78,7 @@
                     <div class="col-lg-6" data-aos="fade-up" data-aos-delay="{{ $loop->iteration * 75 }}">
                         <article class="clinician-row bg-white p-4 rounded-3 shadow-sm border d-flex flex-column flex-sm-row gap-3 h-100">
                             <div class="row-media flex-shrink-0 text-center">
-                                <img src="{{ $doctor->imageUrl() }}" alt="{{ $doctor->name }}" class="rounded-3 img-fluid shadow-sm" style="width: 140px; height: 165px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/img/health/staff-1.webp') }}';">
+                                <img src="{{ $doctor->imageUrl() }}" alt="{{ $doctor->name }}" class="rounded-3 img-fluid shadow-sm" style="width: 140px; height: 165px; object-fit: cover;" onerror="this.onerror=null; this.src='/assets/img/health/staff-1.webp';">
                             </div>
                             <div class="row-body flex-grow-1 d-flex flex-column justify-content-between">
                                 <div>
