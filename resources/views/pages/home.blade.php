@@ -389,7 +389,7 @@
                     <div class="col-lg-6" data-aos="fade-up" data-aos-delay="{{ $loop->iteration * 100 }}">
                         <article class="clinician-row bg-white p-3 rounded shadow-sm border d-flex flex-column flex-sm-row gap-3">
                             <div class="row-media flex-shrink-0 text-center">
-                                <img src="{{ asset($doctor->image ?? 'assets/img/health/staff-1.webp') }}" alt="{{ $doctor->name }}" class="rounded img-fluid" style="width: 140px; height: 160px; object-fit: cover;">
+                                <img src="{{ $doctor->imageUrl() }}" alt="{{ $doctor->name }}" class="rounded img-fluid" style="width: 140px; height: 160px; object-fit: cover;" onerror="this.onerror=null; this.src='{{ asset('assets/img/health/staff-1.webp') }}';">
                             </div>
                             <div class="row-body flex-grow-1 d-flex flex-column justify-content-between">
                                 <div>

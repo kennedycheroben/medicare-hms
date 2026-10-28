@@ -91,15 +91,31 @@ class Doctor extends Model
      */
     public function imageUrl(): string
     {
-        if ($this->image && Storage::disk('public')->exists($this->image)) {
-            return Storage::disk('public')->url($this->image);
+        if (! $this->image) {
+            return asset('assets/img/health/staff-1.webp');
         }
 
-        if ($this->image && (str_starts_with($this->image, 'http') || str_starts_with($this->image, 'assets/'))) {
+        if (str_starts_with($this->image, 'http://') || str_starts_with($this->image, 'https://')) {
+            return $this->image;
+        }
+
+        if (str_starts_with($this->image, 'assets/')) {
             return asset($this->image);
         }
 
-        return asset('assets/img/health/staff-1.webp');
+        if (str_starts_with($this->image, 'storage/')) {
+            return asset($this->image);
+        }
+
+        if (Storage::disk('public')->exists($this->image)) {
+            return Storage::disk('public')->url($this->image);
+        }
+
+        if (str_starts_with($this->image, 'doctors/')) {
+            return asset('storage/'.$this->image);
+        }
+
+        return asset($this->image);
     }
 
     /**
