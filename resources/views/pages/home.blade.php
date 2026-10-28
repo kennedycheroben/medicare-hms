@@ -32,10 +32,17 @@
                     "slidesPerView": 1
                 }
             </script>
+            @php
+                $heroSlides = [
+                    asset('assets/img/health/showcase-1.webp'),
+                    asset('assets/img/health/showcase-7.webp'),
+                    asset('assets/img/health/showcase-11.webp'),
+                ];
+            @endphp
             <div class="swiper-wrapper">
-                <div class="swiper-slide" style="background-image: url('{{ asset('assets/img/health/showcase-1.webp') }}');"></div>
-                <div class="swiper-slide" style="background-image: url('{{ asset('assets/img/health/showcase-7.webp') }}');"></div>
-                <div class="swiper-slide" style="background-image: url('{{ asset('assets/img/health/showcase-11.webp') }}');"></div>
+                @foreach ($heroSlides as $slide)
+                    <div class="swiper-slide" style="background-image: url('{{ $slide }}');"></div>
+                @endforeach
             </div>
             <div class="slide-overlay"></div>
         </div>

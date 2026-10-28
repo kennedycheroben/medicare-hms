@@ -310,7 +310,9 @@ class DoctorProfileWorkflowTest extends TestCase
 
         $this->assertNotNull($this->doctor->image);
         $this->assertStringEndsWith('.jpg', $this->doctor->image);
-        Storage::disk('public')->assertExists($this->doctor->image);
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $publicDisk */
+        $publicDisk = Storage::disk('public');
+        $publicDisk->assertExists($this->doctor->image);
         $this->assertStringContainsString('storage/'.$this->doctor->image, $this->doctor->imageUrl());
     }
 
