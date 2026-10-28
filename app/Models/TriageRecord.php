@@ -68,6 +68,7 @@ class TriageRecord extends Model
     {
         if ($weightKg && $heightCm && $heightCm > 0) {
             $heightMeters = $heightCm / 100;
+
             return round($weightKg / ($heightMeters * $heightMeters), 1);
         }
 

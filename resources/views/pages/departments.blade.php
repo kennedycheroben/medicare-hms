@@ -157,8 +157,23 @@
                     </div>
                 @empty
                     <div class="col-12 text-center py-5">
-                        <i class="bi bi-hospital fs-1 text-muted d-block mb-2"></i>
-                        <h5 class="text-muted">No clinical departments are currently active.</h5>
+                        <div class="card border-0 shadow-sm rounded-4 p-5 mx-auto" style="max-width: 680px;">
+                            <div class="rounded-circle bg-primary-subtle text-primary p-3 mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
+                                <i class="bi bi-hospital fs-2"></i>
+                            </div>
+                            <h4 class="fw-bold text-dark mb-2">Clinical Departments Under Directory Update</h4>
+                            <p class="text-muted mb-4">
+                                Our hospital administration is currently updating the public departmental directory. Outpatient triage and clinical consultations remain fully operational. You can book a consultation via our General Intake service or reach out directly to emergency reception.
+                            </p>
+                            <div class="d-flex flex-wrap justify-content-center gap-3">
+                                <a href="{{ route('appointments.create') }}" class="btn btn-primary px-4 py-2">
+                                    <i class="bi bi-calendar-check me-2"></i> Book General Intake Consultation
+                                </a>
+                                <a href="{{ route('contact') }}" class="btn btn-outline-secondary px-4 py-2">
+                                    <i class="bi bi-telephone me-2"></i> Emergency & Triage Desk
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 @endforelse
             </div>

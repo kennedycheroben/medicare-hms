@@ -9,8 +9,8 @@ use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\Medicine;
 use App\Models\User;
-use App\Notifications\HospitalNotification;
 use Database\Seeders\HospitalDataSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -247,7 +247,7 @@ class ProductionReconciliationVerificationTest extends TestCase
         ]);
 
         // Negative quantity_current must throw QueryException due to CHECK constraint
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         DB::table('medicine_batches')->insert([
             'medicine_id' => $medicine->id,

@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\User;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -310,7 +311,7 @@ class DoctorProfileWorkflowTest extends TestCase
 
         $this->assertNotNull($this->doctor->image);
         $this->assertStringEndsWith('.jpg', $this->doctor->image);
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $publicDisk */
+        /** @var FilesystemAdapter $publicDisk */
         $publicDisk = Storage::disk('public');
         $publicDisk->assertExists($this->doctor->image);
         $this->assertStringContainsString('storage/'.$this->doctor->image, $this->doctor->imageUrl());

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Patient;
+use App\Rules\ValidPhoneNumber;
 use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -76,7 +77,7 @@ class PatientController extends Controller
             'last_name' => ['required', 'string', 'max:100'],
             'date_of_birth' => ['required', 'date', 'before_or_equal:today'],
             'gender' => ['required', 'in:male,female,other,unspecified'],
-            'phone' => ['required', 'string', new \App\Rules\ValidPhoneNumber()],
+            'phone' => ['required', 'string', new ValidPhoneNumber],
             'email' => ['nullable', 'email', 'max:255'],
             'national_id' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string', 'max:255'],
@@ -84,7 +85,7 @@ class PatientController extends Controller
             'blood_group' => ['nullable', 'string', 'max:10'],
             'allergies' => ['nullable', 'string', 'max:1000'],
             'emergency_contact_name' => ['nullable', 'string', 'max:150'],
-            'emergency_contact_phone' => ['nullable', 'string', new \App\Rules\ValidPhoneNumber()],
+            'emergency_contact_phone' => ['nullable', 'string', new ValidPhoneNumber],
             'emergency_contact_relationship' => ['nullable', 'string', 'max:50'],
             'force_duplicate_override' => ['nullable', 'boolean'],
         ]);
@@ -109,7 +110,7 @@ class PatientController extends Controller
         }
 
         // Transactional creation of Patient and unique MRN
-        $patient = DB::transaction(function () use ($validated, $request, $potentialDuplicates, $forceOverride) {
+        $patient = DB::transaction(function () use ($validated, $potentialDuplicates, $forceOverride) {
             $mrn = Patient::generateUniqueMrn();
 
             $newPatient = Patient::create([
@@ -210,7 +211,7 @@ class PatientController extends Controller
             'last_name' => ['required', 'string', 'max:100'],
             'date_of_birth' => ['required', 'date', 'before_or_equal:today'],
             'gender' => ['required', 'in:male,female,other,unspecified'],
-            'phone' => ['required', 'string', new \App\Rules\ValidPhoneNumber()],
+            'phone' => ['required', 'string', new ValidPhoneNumber],
             'email' => ['nullable', 'email', 'max:255'],
             'national_id' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string', 'max:255'],
@@ -218,7 +219,7 @@ class PatientController extends Controller
             'blood_group' => ['nullable', 'string', 'max:10'],
             'allergies' => ['nullable', 'string', 'max:1000'],
             'emergency_contact_name' => ['nullable', 'string', 'max:150'],
-            'emergency_contact_phone' => ['nullable', 'string', new \App\Rules\ValidPhoneNumber()],
+            'emergency_contact_phone' => ['nullable', 'string', new ValidPhoneNumber],
             'emergency_contact_relationship' => ['nullable', 'string', 'max:50'],
             'is_active' => ['boolean'],
         ]);

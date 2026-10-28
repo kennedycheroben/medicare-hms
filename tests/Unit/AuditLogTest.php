@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -29,7 +30,7 @@ class AuditLogTest extends TestCase
     public function test_audit_service_redacts_sensitive_credentials_and_tokens(): void
     {
         $user = User::factory()->create();
-        $log = \App\Services\AuditService::record(
+        $log = AuditService::record(
             action: 'auth.test',
             resourceType: 'system',
             resourceId: '1',

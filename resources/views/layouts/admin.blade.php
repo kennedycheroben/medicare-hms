@@ -474,6 +474,12 @@
                         @endif
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.tasks.*') ? 'active' : '' }}" href="{{ route('admin.tasks.index') }}" data-sidebar-tooltip="Staff Tasks">
+                        <i class="ph-light ph-check-square"></i>
+                        <span>Staff Tasks</span>
+                    </a>
+                </li>
 
                 <li class="nav-heading"><span>Patients & Intake</span></li>
                 @if($isIntake)
@@ -496,6 +502,15 @@
                         <a class="nav-link {{ request()->routeIs('admin.patients.*') ? 'active' : '' }}" href="{{ route('admin.patients.index') }}" data-sidebar-tooltip="Patient Directory">
                             <i class="ph-light ph-address-book"></i>
                             <span>Patient Master Index</span>
+                        </a>
+                    </li>
+                @endif
+
+                @if($user && $user->hasRole(['super_admin', 'hospital_director', 'receptionist']))
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.inquiries.*') ? 'active' : '' }}" href="{{ route('admin.inquiries.index') }}" data-sidebar-tooltip="Contact Enquiries">
+                            <i class="ph-light ph-chat-circle-dots"></i>
+                            <span>Contact Enquiries</span>
                         </a>
                     </li>
                 @endif

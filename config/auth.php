@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\PatientAccount;
 use App\Models\User;
 
 return [
@@ -73,7 +74,7 @@ return [
 
         'patient_accounts' => [
             'driver' => 'eloquent',
-            'model' => \App\Models\PatientAccount::class,
+            'model' => PatientAccount::class,
         ],
 
         // 'users' => [

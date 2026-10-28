@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Middleware\EnsurePatientPortalAuth;
+use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,13 +17,13 @@ $app = Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
-            \App\Http\Middleware\SecurityHeaders::class,
+            SecurityHeaders::class,
         ]);
 
         $middleware->alias([
-            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
-            'active' => \App\Http\Middleware\EnsureUserIsActive::class,
-            'patient.auth' => \App\Http\Middleware\EnsurePatientPortalAuth::class,
+            'role' => EnsureUserHasRole::class,
+            'active' => EnsureUserIsActive::class,
+            'patient.auth' => EnsurePatientPortalAuth::class,
         ]);
 
         $middleware->redirectTo(
@@ -34,7 +38,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     })->create();
 
 $deploymentPublicPath = env('LARAVEL_PUBLIC_PATH')
-    ?: (dirname(__DIR__, 2) . '/medicare.kennedycheroben.co.ke');
+    ?: (dirname(__DIR__, 2).'/medicare.kennedycheroben.co.ke');
 
 if (is_dir($deploymentPublicPath)) {
     $app->usePublicPath($deploymentPublicPath);

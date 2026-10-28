@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
-use App\Models\AuditLog;
 use App\Models\Consultation;
 use App\Models\Department;
 use App\Models\Dispensing;
@@ -26,15 +25,25 @@ class PharmacyDispensingAndInventoryTest extends TestCase
     use RefreshDatabase;
 
     protected User $superAdmin;
+
     protected User $pharmacist;
+
     protected User $doctorUser;
+
     protected User $receptionist;
+
     protected Patient $patient;
+
     protected Visit $visit;
+
     protected Consultation $consultation;
+
     protected Medicine $amoxicillin;
+
     protected MedicineBatch $batch1;
+
     protected MedicineBatch $batch2;
+
     protected MedicineBatch $expiredBatch;
 
     protected function setUp(): void

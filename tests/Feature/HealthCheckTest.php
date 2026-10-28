@@ -14,15 +14,15 @@ class HealthCheckTest extends TestCase
         $response = $this->get('/health');
 
         $response->assertStatus(200)
-                 ->assertJson([
-                     'status' => 'healthy',
-                 ])
-                 ->assertJsonStructure([
-                     'status',
-                     'application',
-                     'environment',
-                     'timestamp',
-                 ]);
+            ->assertJson([
+                'status' => 'healthy',
+            ])
+            ->assertJsonStructure([
+                'status',
+                'application',
+                'environment',
+                'timestamp',
+            ]);
     }
 
     /**

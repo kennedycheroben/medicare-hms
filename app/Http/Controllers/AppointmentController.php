@@ -93,6 +93,7 @@ class AppointmentController extends Controller
             'patient_email' => $validated['patient_email'],
             'patient_phone' => ValidPhoneNumber::normalize($validated['patient_phone']),
             'department_id' => $departmentId,
+            'preferred_doctor_id' => $doctorId,
             'doctor_id' => $doctorId,
             'appointment_date' => $validated['appointment_date'],
             'appointment_time' => $validated['appointment_time'],

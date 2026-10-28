@@ -5,10 +5,10 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Department;
-use App\Models\Doctor;
 use App\Models\User;
 use Database\Seeders\HospitalDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class StaffManagementTest extends TestCase
@@ -16,7 +16,9 @@ class StaffManagementTest extends TestCase
     use RefreshDatabase;
 
     protected User $superAdmin;
+
     protected User $doctorUser;
+
     protected User $receptionist;
 
     protected function setUp(): void
@@ -61,7 +63,7 @@ class StaffManagementTest extends TestCase
         $response->assertSee('receptionist@medicare.local');
 
         // Test filter by role
-        $filterRole = $this->actingAs($this->superAdmin)->get('/admin/staff?role=' . UserRole::DOCTOR->value);
+        $filterRole = $this->actingAs($this->superAdmin)->get('/admin/staff?role='.UserRole::DOCTOR->value);
         $filterRole->assertStatus(200);
         $filterRole->assertSee('doctor@medicare.local');
         $filterRole->assertDontSee('receptionist@medicare.local');
@@ -81,7 +83,7 @@ class StaffManagementTest extends TestCase
         $responseReceptionist = $this->actingAs($this->receptionist)->get('/admin/staff');
         $responseReceptionist->assertStatus(403);
 
-        \Illuminate\Support\Facades\Auth::guard('web')->logout();
+        Auth::guard('web')->logout();
         $responseGuest = $this->get('/admin/staff');
         $responseGuest->assertRedirect('/admin/login');
     }
@@ -138,7 +140,7 @@ class StaffManagementTest extends TestCase
     {
         $department = Department::first();
 
-        $response = $this->actingAs($this->superAdmin)->put('/admin/staff/' . $this->doctorUser->id, [
+        $response = $this->actingAs($this->superAdmin)->put('/admin/staff/'.$this->doctorUser->id, [
             'name' => 'Dr. Gregory House, MD',
             'email' => 'doctor@medicare.local',
             'role' => UserRole::DOCTOR->value,
@@ -158,7 +160,7 @@ class StaffManagementTest extends TestCase
         $this->assertTrue($this->doctorUser->is_active);
 
         // Deactivate
-        $response = $this->actingAs($this->superAdmin)->post('/admin/staff/' . $this->doctorUser->id . '/toggle-status');
+        $response = $this->actingAs($this->superAdmin)->post('/admin/staff/'.$this->doctorUser->id.'/toggle-status');
         $response->assertRedirect();
         $this->doctorUser->refresh();
         $this->assertFalse($this->doctorUser->is_active);
@@ -169,7 +171,7 @@ class StaffManagementTest extends TestCase
         $guardedResponse->assertSessionHasErrors(['email']);
 
         // Activate back
-        $response2 = $this->actingAs($this->superAdmin)->post('/admin/staff/' . $this->doctorUser->id . '/toggle-status');
+        $response2 = $this->actingAs($this->superAdmin)->post('/admin/staff/'.$this->doctorUser->id.'/toggle-status');
         $response2->assertRedirect();
         $this->doctorUser->refresh();
         $this->assertTrue($this->doctorUser->is_active);
@@ -178,13 +180,13 @@ class StaffManagementTest extends TestCase
     public function test_superadmin_cannot_deactivate_or_demote_themselves(): void
     {
         // Attempt self-deactivation via toggle
-        $response = $this->actingAs($this->superAdmin)->post('/admin/staff/' . $this->superAdmin->id . '/toggle-status');
+        $response = $this->actingAs($this->superAdmin)->post('/admin/staff/'.$this->superAdmin->id.'/toggle-status');
         $response->assertSessionHasErrors(['status']);
         $this->superAdmin->refresh();
         $this->assertTrue($this->superAdmin->is_active);
 
         // Attempt self-demotion via update
-        $responseDemote = $this->actingAs($this->superAdmin)->put('/admin/staff/' . $this->superAdmin->id, [
+        $responseDemote = $this->actingAs($this->superAdmin)->put('/admin/staff/'.$this->superAdmin->id, [
             'name' => 'Demoted Admin',
             'email' => 'superadmin@medicare.local',
             'role' => UserRole::RECEPTIONIST->value,
@@ -209,7 +211,7 @@ class StaffManagementTest extends TestCase
         ]);
 
         // First admin can deactivate second admin
-        $this->actingAs($this->superAdmin)->post('/admin/staff/' . $secondAdmin->id . '/toggle-status');
+        $this->actingAs($this->superAdmin)->post('/admin/staff/'.$secondAdmin->id.'/toggle-status');
         $secondAdmin->refresh();
         $this->assertFalse($secondAdmin->is_active);
 

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AppointmentManagementController;
 use App\Http\Controllers\Admin\ArticleController;
 use App\Http\Controllers\Admin\ConsultationController;
+use App\Http\Controllers\Admin\ContactInquiryController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorManagementController;
 use App\Http\Controllers\Admin\DoctorProfileController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\Admin\PatientPortalAccessController;
 use App\Http\Controllers\Admin\PharmacyController;
 use App\Http\Controllers\Admin\PrescriptionController;
 use App\Http\Controllers\Admin\StaffManagementController;
+use App\Http\Controllers\Admin\StaffTaskController;
 use App\Http\Controllers\Admin\TriageController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ContactController;
@@ -179,6 +181,7 @@ Route::prefix('admin')->middleware(['auth:web', 'active'])->group(function () {
         ->name('admin.appointments.show');
 
     Route::middleware('role:super_admin,receptionist')->group(function () {
+        Route::post('/appointments/{appointment}/assign', [AppointmentManagementController::class, 'assign'])->name('admin.appointments.assign');
         Route::post('/appointments/{appointment}/confirm', [AppointmentManagementController::class, 'confirm'])->name('admin.appointments.confirm');
         Route::post('/appointments/{appointment}/reschedule', [AppointmentManagementController::class, 'reschedule'])->name('admin.appointments.reschedule');
         Route::post('/appointments/{appointment}/cancel', [AppointmentManagementController::class, 'cancel'])->name('admin.appointments.cancel');
@@ -296,5 +299,20 @@ Route::prefix('admin')->middleware(['auth:web', 'active'])->group(function () {
         Route::get('/{article}/preview', [$c, 'preview'])->name('admin.articles.preview');
         Route::post('/{article}/publish', [$c, 'publish'])->name('admin.articles.publish');
         Route::post('/{article}/unpublish', [$c, 'unpublish'])->name('admin.articles.unpublish');
+    });
+
+    // 10. Public Contact Enquiries & Support Tickets (SuperAdmin, Hospital Director, Receptionist)
+    Route::middleware('role:super_admin,hospital_director,receptionist')->prefix('inquiries')->group(function () {
+        Route::get('/', [ContactInquiryController::class, 'index'])->name('admin.inquiries.index');
+        Route::get('/{inquiry}', [ContactInquiryController::class, 'show'])->name('admin.inquiries.show');
+        Route::post('/{inquiry}/status', [ContactInquiryController::class, 'updateStatus'])->name('admin.inquiries.status');
+    });
+
+    // 11. Staff Task Delegations & Follow-Up (All Authenticated Staff)
+    Route::prefix('tasks')->group(function () {
+        Route::get('/', [StaffTaskController::class, 'index'])->name('admin.tasks.index');
+        Route::post('/', [StaffTaskController::class, 'store'])->name('admin.tasks.store');
+        Route::get('/{task}', [StaffTaskController::class, 'show'])->name('admin.tasks.show');
+        Route::put('/{task}', [StaffTaskController::class, 'update'])->name('admin.tasks.update');
     });
 });

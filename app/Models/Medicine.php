@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Medicine extends Model
 {
@@ -83,7 +84,7 @@ class Medicine extends Model
     public static function generateUniqueCode(): string
     {
         do {
-            $code = 'MED-' . strtoupper(\Illuminate\Support\Str::random(6));
+            $code = 'MED-'.strtoupper(Str::random(6));
         } while (static::where('code', $code)->exists());
 
         return $code;

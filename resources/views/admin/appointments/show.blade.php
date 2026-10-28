@@ -30,6 +30,12 @@
         <!-- Action Buttons -->
         <div class="d-flex flex-wrap gap-2">
             @if(Auth::user()->hasRole(['super_admin', 'receptionist']))
+                @if(!in_array($appointment->status, ['cancelled', 'completed']))
+                    <button type="button" class="btn btn-outline-info d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#assignDoctorModal">
+                        <i class="bi bi-person-badge"></i> {{ $appointment->isAssigned() ? 'Reassign Doctor' : 'Assign Doctor' }}
+                    </button>
+                @endif
+
                 @if($appointment->canBeConfirmed())
                     <button type="button" class="btn btn-success d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#confirmModal">
                         <i class="bi bi-check2-circle"></i> Confirm Slot
@@ -108,9 +114,36 @@
                             @endif
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small mb-1">Assigned Specialist</label>
+                            <label class="form-label text-muted small mb-1">Patient Preferred Doctor</label>
                             <div class="fw-semibold text-dark">
-                                {{ $appointment->doctor ? 'Dr. ' . $appointment->doctor->name . ' (' . $appointment->doctor->specialty . ')' : 'Any Available Specialist' }}
+                                @if($appointment->preferredDoctor)
+                                    Dr. {{ $appointment->preferredDoctor->name }} ({{ $appointment->preferredDoctor->specialty }})
+                                @elseif($appointment->preferred_doctor_id)
+                                    Physician #{{ $appointment->preferred_doctor_id }}
+                                @else
+                                    <span class="text-muted fst-italic">None requested (General Intake)</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small mb-1">Actual Assigned Doctor (Staff Assignment)</label>
+                            <div>
+                                @if($appointment->doctor && $appointment->assigned_at)
+                                    <span class="fw-bold text-success">
+                                        Dr. {{ $appointment->doctor->name }} ({{ $appointment->doctor->specialty }})
+                                    </span>
+                                    <span class="badge bg-success-subtle text-success ms-1 small">
+                                        Assigned by {{ $appointment->assignedBy?->name ?? 'Staff' }} on {{ $appointment->assigned_at->format('M d, Y H:i') }}
+                                    </span>
+                                @elseif($appointment->doctor)
+                                    <span class="text-warning fw-semibold">
+                                        Dr. {{ $appointment->doctor->name }} (Pending Staff Assignment)
+                                    </span>
+                                @else
+                                    <span class="badge bg-danger-subtle text-danger px-2 py-1">
+                                        <i class="bi bi-exclamation-circle me-1"></i>Awaiting Staff Assignment
+                                    </span>
+                                @endif
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -490,4 +523,55 @@
 </div>
 @endif
 
+<!-- Modal: Assign / Reassign Doctor -->
+@if(!in_array($appointment->status, ['completed', 'cancelled']))
+<div class="modal fade" id="assignDoctorModal" tabindex="-1" aria-labelledby="assignDoctorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="POST" action="{{ route('admin.appointments.assign', $appointment->id) }}">
+                @csrf
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-dark" id="assignDoctorModalLabel">
+                        <i class="bi bi-person-badge text-primary me-2"></i> {{ $appointment->doctor_id ? 'Reassign Doctor' : 'Assign Attending Doctor' }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    @if($appointment->preferredDoctor)
+                        <div class="alert alert-info py-2 px-3 small rounded-3 mb-3">
+                            <i class="bi bi-heart-pulse me-1"></i> Patient Preferred: <strong>Dr. {{ $appointment->preferredDoctor->name }}</strong> ({{ $appointment->preferredDoctor->department->name ?? 'General' }})
+                        </div>
+                    @endif
+
+                    <div class="mb-3">
+                        <label for="assign_doctor_id" class="form-label fw-bold small">Select Attending Doctor <span class="text-danger">*</span></label>
+                        <select name="doctor_id" id="assign_doctor_id" class="form-select form-select-sm" required>
+                            <option value="">-- Choose Available Specialist / Practitioner --</option>
+                            @foreach($doctors as $doc)
+                                <option value="{{ $doc->id }}" @selected($appointment->doctor_id == $doc->id)>
+                                    Dr. {{ $doc->name }} ({{ $doc->department->name ?? 'Clinical' }}) {{ $appointment->preferred_doctor_id == $doc->id ? '— [Patient Preference]' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text extra-small">Doctors will only be notified once assigned. A scheduling conflict check will prevent overlapping bookings.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="assign_triage_notes" class="form-label fw-bold small">Triage / Assignment Notes (Optional)</label>
+                        <textarea name="triage_notes" id="assign_triage_notes" class="form-control form-control-sm" rows="3" placeholder="Enter clinical priority, reason for doctor reassignment, or special triage instructions">{{ old('triage_notes', $appointment->triage_notes) }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i> Confirm Doctor Assignment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 @endsection
+

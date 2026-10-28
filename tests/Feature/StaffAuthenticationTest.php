@@ -7,7 +7,10 @@ use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\User;
+use App\Services\AuditService;
+use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\HospitalDataSeeder;
+use Database\Seeders\StaffUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -319,7 +322,7 @@ class StaffAuthenticationTest extends TestCase
 
     public function test_audit_service_redacts_passwords_and_secrets(): void
     {
-        \App\Services\AuditService::record(
+        AuditService::record(
             action: 'test.sensitive_action',
             resourceType: 'test',
             resourceId: '1',
@@ -370,7 +373,7 @@ class StaffAuthenticationTest extends TestCase
         $this->assertTrue($this->app->isProduction());
 
         try {
-            (new \Database\Seeders\StaffUserSeeder())->run();
+            (new StaffUserSeeder)->run();
 
             $this->assertSame(0, User::count());
             $this->assertEquals(0, User::where('email', 'like', '%@medicare.local')->count());
@@ -415,7 +418,7 @@ class StaffAuthenticationTest extends TestCase
         $this->assertTrue($this->app->isProduction());
 
         try {
-            (new \Database\Seeders\DatabaseSeeder())->run();
+            (new DatabaseSeeder)->run();
 
             // Structural reference data (departments and doctors) is fully populated
             $this->assertSame(6, Department::count());
@@ -451,7 +454,7 @@ class StaffAuthenticationTest extends TestCase
 
         $this->assertFalse($this->app->isProduction());
 
-        (new \Database\Seeders\DatabaseSeeder())->run();
+        (new DatabaseSeeder)->run();
 
         $this->assertSame(6, Department::count());
         $this->assertSame(6, Doctor::count());
@@ -461,7 +464,7 @@ class StaffAuthenticationTest extends TestCase
 
     public function test_staff_user_seeder_populates_all_roles_with_hashed_passwords_in_local_or_testing(): void
     {
-        (new \Database\Seeders\StaffUserSeeder())->run();
+        (new StaffUserSeeder)->run();
 
         $this->assertEquals(9, User::where('email', 'like', '%@medicare.local')->count());
 
@@ -504,7 +507,7 @@ class StaffAuthenticationTest extends TestCase
         $_SERVER['DEMO_STAFF_PASSWORD'] = $customPassword;
 
         try {
-            (new \Database\Seeders\StaffUserSeeder())->run();
+            (new StaffUserSeeder)->run();
 
             $users = User::where('email', 'like', '%@medicare.local')->get();
             $this->assertCount(9, $users);
@@ -547,7 +550,7 @@ class StaffAuthenticationTest extends TestCase
         $_SERVER['DEMO_STAFF_PASSWORD'] = '   ';
 
         try {
-            (new \Database\Seeders\StaffUserSeeder())->run();
+            (new StaffUserSeeder)->run();
 
             $admin = User::where('email', 'admin@medicare.local')->first();
             $this->assertNotNull($admin);
@@ -577,4 +580,3 @@ class StaffAuthenticationTest extends TestCase
         }
     }
 }
-

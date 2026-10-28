@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
 class CreateSuperAdminCommand extends Command

@@ -8,8 +8,9 @@ use App\Models\Medicine;
 use App\Models\MedicineBatch;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
-use App\Models\StockMovement;
+use App\Models\User;
 use App\Services\AuditService;
+use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -102,9 +103,9 @@ class PharmacyController extends Controller
     public function dispense(
         Request $request,
         PrescriptionItem $item,
-        \App\Services\InventoryService $inventoryService
+        InventoryService $inventoryService
     ): RedirectResponse {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['pharmacist', 'super_admin'])) {
@@ -137,7 +138,7 @@ class PharmacyController extends Controller
      */
     public function decline(Request $request, PrescriptionItem $item): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['pharmacist', 'super_admin'])) {

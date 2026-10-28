@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
+use Database\Seeders\HospitalDataSeeder;
 use Illuminate\Support\Facades\Config;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
@@ -14,7 +15,7 @@ class DemoModeSafetyTest extends TestCase
         parent::setUp();
 
         if (! Department::exists()) {
-            $this->seed(\Database\Seeders\HospitalDataSeeder::class);
+            $this->seed(HospitalDataSeeder::class);
         }
     }
 
@@ -36,7 +37,7 @@ class DemoModeSafetyTest extends TestCase
             if ($item === '.' || $item === '..') {
                 continue;
             }
-            $path = $dir . DIRECTORY_SEPARATOR . $item;
+            $path = $dir.DIRECTORY_SEPARATOR.$item;
             if (is_link($path)) {
                 unlink($path);
             } elseif (is_dir($path)) {
@@ -203,21 +204,21 @@ class DemoModeSafetyTest extends TestCase
      */
     public function test_asset_promotion_blocks_silent_overwrite_of_differing_files_without_explicit_approval(): void
     {
-        $baseTemp = sys_get_temp_dir() . '/medicare_test_' . uniqid();
-        $tempApp = $baseTemp . '/app';
-        $tempWebRoot = $baseTemp . '/webroot';
+        $baseTemp = sys_get_temp_dir().'/medicare_test_'.uniqid();
+        $tempApp = $baseTemp.'/app';
+        $tempWebRoot = $baseTemp.'/webroot';
 
-        mkdir($tempApp . '/public/admin-assets', 0755, true);
-        mkdir($tempApp . '/public/assets', 0755, true);
-        file_put_contents($tempApp . '/public/assets/style.css', '/* release v2.0 */');
-        file_put_contents($tempApp . '/public/index.php', '<?php echo "release v2.0";');
-        file_put_contents($tempApp . '/public/robots.txt', 'User-agent: *');
-        file_put_contents($tempApp . '/public/.htaccess', 'RewriteEngine On');
+        mkdir($tempApp.'/public/admin-assets', 0755, true);
+        mkdir($tempApp.'/public/assets', 0755, true);
+        file_put_contents($tempApp.'/public/assets/style.css', '/* release v2.0 */');
+        file_put_contents($tempApp.'/public/index.php', '<?php echo "release v2.0";');
+        file_put_contents($tempApp.'/public/robots.txt', 'User-agent: *');
+        file_put_contents($tempApp.'/public/.htaccess', 'RewriteEngine On');
 
         mkdir($tempWebRoot, 0755, true);
-        mkdir($tempWebRoot . '/assets', 0755, true);
-        file_put_contents($tempWebRoot . '/assets/style.css', '/* existing custom style */');
-        file_put_contents($tempWebRoot . '/index.php', '<?php echo "existing custom code";');
+        mkdir($tempWebRoot.'/assets', 0755, true);
+        file_put_contents($tempWebRoot.'/assets/style.css', '/* existing custom style */');
+        file_put_contents($tempWebRoot.'/index.php', '<?php echo "existing custom code";');
 
         $scriptPath = base_path('scripts/promote_release_assets.sh');
         $this->assertFileExists($scriptPath);
@@ -239,12 +240,12 @@ class DemoModeSafetyTest extends TestCase
         // Verify existing destination file and directory were NOT overwritten
         $this->assertEquals(
             '<?php echo "existing custom code";',
-            file_get_contents($tempWebRoot . '/index.php'),
+            file_get_contents($tempWebRoot.'/index.php'),
             'Existing destination file must not be silently overwritten.'
         );
         $this->assertEquals(
             '/* existing custom style */',
-            file_get_contents($tempWebRoot . '/assets/style.css'),
+            file_get_contents($tempWebRoot.'/assets/style.css'),
             'Existing destination directory must not be silently overwritten.'
         );
 
@@ -260,31 +261,31 @@ class DemoModeSafetyTest extends TestCase
 
         $this->assertTrue(
             $approvedProcess->isSuccessful(),
-            'Promotion must succeed once operator explicitly approves replacement: ' . $approvedProcess->getErrorOutput()
+            'Promotion must succeed once operator explicitly approves replacement: '.$approvedProcess->getErrorOutput()
         );
         $this->assertEquals(
             '<?php echo "release v2.0";',
-            file_get_contents($tempWebRoot . '/index.php'),
+            file_get_contents($tempWebRoot.'/index.php'),
             'Destination file must be updated to staged release after approval.'
         );
         $this->assertEquals(
             '/* release v2.0 */',
-            file_get_contents($tempWebRoot . '/assets/style.css'),
+            file_get_contents($tempWebRoot.'/assets/style.css'),
             'Destination directory content must be updated to staged release after approval.'
         );
 
         // 3. Verify backup retention: previous live asset directory must be preserved, not deleted immediately
-        $prevBackups = glob($tempWebRoot . '/assets_prev_*');
+        $prevBackups = glob($tempWebRoot.'/assets_prev_*');
         $this->assertNotEmpty($prevBackups, 'Previous asset directory backup must exist on disk.');
-        $this->assertFileExists($prevBackups[0] . '/style.css');
+        $this->assertFileExists($prevBackups[0].'/style.css');
         $this->assertEquals(
             '/* existing custom style */',
-            file_get_contents($prevBackups[0] . '/style.css'),
+            file_get_contents($prevBackups[0].'/style.css'),
             'Previous asset directory backup must retain the prior content for rollback.'
         );
 
         // Verify web root backup was created and retained
-        $webrootBackups = glob($baseTemp . '/backup_webroot_*');
+        $webrootBackups = glob($baseTemp.'/backup_webroot_*');
         $this->assertNotEmpty($webrootBackups, 'Full web root backup must exist on disk.');
         $this->assertStringContainsString('RETAINED BACKUPS FOR ROLLBACK', $approvedProcess->getOutput());
         $this->assertStringContainsString('permanently preserved until a human operator', $approvedProcess->getOutput());
@@ -297,17 +298,17 @@ class DemoModeSafetyTest extends TestCase
      */
     public function test_asset_promotion_preserves_cpanel_htaccess_handlers(): void
     {
-        $baseTemp = sys_get_temp_dir() . '/medicare_htaccess_' . uniqid();
-        $tempApp = $baseTemp . '/app';
-        $tempWebRoot = $baseTemp . '/webroot';
+        $baseTemp = sys_get_temp_dir().'/medicare_htaccess_'.uniqid();
+        $tempApp = $baseTemp.'/app';
+        $tempWebRoot = $baseTemp.'/webroot';
 
-        mkdir($tempApp . '/public', 0755, true);
-        file_put_contents($tempApp . '/public/index.php', '<?php echo "v2";');
-        file_put_contents($tempApp . '/public/.htaccess', "RewriteEngine On\nRewriteRule ^ index.php [L]");
+        mkdir($tempApp.'/public', 0755, true);
+        file_put_contents($tempApp.'/public/index.php', '<?php echo "v2";');
+        file_put_contents($tempApp.'/public/.htaccess', "RewriteEngine On\nRewriteRule ^ index.php [L]");
 
         mkdir($tempWebRoot, 0755, true);
         $cpanelHandler = "# php -- BEGIN cPanel-generated handler do not edit\nAddHandler application/x-httpd-ea-php83 .php\n# php -- END cPanel-generated handler\n";
-        file_put_contents($tempWebRoot . '/.htaccess', $cpanelHandler);
+        file_put_contents($tempWebRoot.'/.htaccess', $cpanelHandler);
 
         $scriptPath = base_path('scripts/promote_release_assets.sh');
         $process = new Process([
@@ -319,9 +320,9 @@ class DemoModeSafetyTest extends TestCase
         ], null, ['ALLOW_REPLACE' => '1']);
         $process->run();
 
-        $this->assertTrue($process->isSuccessful(), 'Promotion should succeed: ' . $process->getErrorOutput());
+        $this->assertTrue($process->isSuccessful(), 'Promotion should succeed: '.$process->getErrorOutput());
 
-        $promotedHtaccess = file_get_contents($tempWebRoot . '/.htaccess');
+        $promotedHtaccess = file_get_contents($tempWebRoot.'/.htaccess');
         $this->assertStringContainsString('# php -- BEGIN cPanel-generated handler', $promotedHtaccess);
         $this->assertStringContainsString('AddHandler application/x-httpd-ea-php83 .php', $promotedHtaccess);
         $this->assertStringContainsString('RewriteEngine On', $promotedHtaccess);
@@ -334,25 +335,25 @@ class DemoModeSafetyTest extends TestCase
      */
     public function test_asset_promotion_dry_run_accurately_detects_unchanged_and_differing_assets_without_mutating_webroot(): void
     {
-        $baseTemp = sys_get_temp_dir() . '/medicare_dryrun_' . uniqid();
-        $tempApp = $baseTemp . '/app';
-        $tempWebRoot = $baseTemp . '/webroot';
+        $baseTemp = sys_get_temp_dir().'/medicare_dryrun_'.uniqid();
+        $tempApp = $baseTemp.'/app';
+        $tempWebRoot = $baseTemp.'/webroot';
 
         // 1. Build application assets
-        mkdir($tempApp . '/public/assets', 0755, true);
-        mkdir($tempApp . '/public/admin-assets', 0755, true);
-        file_put_contents($tempApp . '/public/assets/app.css', '/* identical styles */');
-        file_put_contents($tempApp . '/public/admin-assets/admin.js', '/* release v2.0 js */');
-        file_put_contents($tempApp . '/public/index.php', '<?php echo "identical index";');
-        file_put_contents($tempApp . '/public/robots.txt', 'User-agent: *');
-        file_put_contents($tempApp . '/public/.htaccess', "RewriteEngine On\nRewriteRule ^ index.php [L]");
+        mkdir($tempApp.'/public/assets', 0755, true);
+        mkdir($tempApp.'/public/admin-assets', 0755, true);
+        file_put_contents($tempApp.'/public/assets/app.css', '/* identical styles */');
+        file_put_contents($tempApp.'/public/admin-assets/admin.js', '/* release v2.0 js */');
+        file_put_contents($tempApp.'/public/index.php', '<?php echo "identical index";');
+        file_put_contents($tempApp.'/public/robots.txt', 'User-agent: *');
+        file_put_contents($tempApp.'/public/.htaccess', "RewriteEngine On\nRewriteRule ^ index.php [L]");
 
         // 2. Build destination: assets/app.css and index.php are IDENTICAL, admin-assets is DIFFERENT
-        mkdir($tempWebRoot . '/assets', 0755, true);
-        mkdir($tempWebRoot . '/admin-assets', 0755, true);
-        file_put_contents($tempWebRoot . '/assets/app.css', '/* identical styles */');
-        file_put_contents($tempWebRoot . '/admin-assets/admin.js', '/* legacy old js */');
-        file_put_contents($tempWebRoot . '/index.php', '<?php echo "identical index";');
+        mkdir($tempWebRoot.'/assets', 0755, true);
+        mkdir($tempWebRoot.'/admin-assets', 0755, true);
+        file_put_contents($tempWebRoot.'/assets/app.css', '/* identical styles */');
+        file_put_contents($tempWebRoot.'/admin-assets/admin.js', '/* legacy old js */');
+        file_put_contents($tempWebRoot.'/index.php', '<?php echo "identical index";');
 
         $scriptPath = base_path('scripts/promote_release_assets.sh');
 
@@ -368,7 +369,7 @@ class DemoModeSafetyTest extends TestCase
 
         $this->assertTrue(
             $dryRunProcess->isSuccessful(),
-            'Dry-run must exit with code 0: ' . $dryRunProcess->getErrorOutput()
+            'Dry-run must exit with code 0: '.$dryRunProcess->getErrorOutput()
         );
 
         $output = $dryRunProcess->getOutput();
@@ -383,15 +384,15 @@ class DemoModeSafetyTest extends TestCase
         // NON-MUTATION ASSERTIONS: Ensure dry-run touched zero destination files
         $this->assertEquals(
             '/* legacy old js */',
-            file_get_contents($tempWebRoot . '/admin-assets/admin.js'),
+            file_get_contents($tempWebRoot.'/admin-assets/admin.js'),
             'Dry-run must never overwrite destination files.'
         );
         $this->assertFileDoesNotExist(
-            $tempWebRoot . '/robots.txt',
+            $tempWebRoot.'/robots.txt',
             'Dry-run must not create new files in the destination web root.'
         );
         $this->assertEmpty(
-            glob($baseTemp . '/backup_webroot_*'),
+            glob($baseTemp.'/backup_webroot_*'),
             'Dry-run must not create backup directories.'
         );
 
@@ -403,17 +404,17 @@ class DemoModeSafetyTest extends TestCase
      */
     public function test_asset_promotion_htaccess_preservation_is_idempotent_on_repeated_runs(): void
     {
-        $baseTemp = sys_get_temp_dir() . '/medicare_ht_idempotent_' . uniqid();
-        $tempApp = $baseTemp . '/app';
-        $tempWebRoot = $baseTemp . '/webroot';
+        $baseTemp = sys_get_temp_dir().'/medicare_ht_idempotent_'.uniqid();
+        $tempApp = $baseTemp.'/app';
+        $tempWebRoot = $baseTemp.'/webroot';
 
-        mkdir($tempApp . '/public', 0755, true);
-        file_put_contents($tempApp . '/public/index.php', '<?php echo "v2";');
-        file_put_contents($tempApp . '/public/.htaccess', "<IfModule mod_rewrite.c>\n    RewriteEngine On\n    RewriteRule ^ index.php [L]\n</IfModule>");
+        mkdir($tempApp.'/public', 0755, true);
+        file_put_contents($tempApp.'/public/index.php', '<?php echo "v2";');
+        file_put_contents($tempApp.'/public/.htaccess', "<IfModule mod_rewrite.c>\n    RewriteEngine On\n    RewriteRule ^ index.php [L]\n</IfModule>");
 
         mkdir($tempWebRoot, 0755, true);
         $cpanelHandler = "# php -- BEGIN cPanel-generated handler do not edit\nAddHandler application/x-httpd-ea-php83 .php\n# php -- END cPanel-generated handler";
-        file_put_contents($tempWebRoot . '/.htaccess', $cpanelHandler);
+        file_put_contents($tempWebRoot.'/.htaccess', $cpanelHandler);
 
         $scriptPath = base_path('scripts/promote_release_assets.sh');
 
@@ -427,8 +428,8 @@ class DemoModeSafetyTest extends TestCase
         ], null, ['ALLOW_REPLACE' => '1']);
         $run1->run();
 
-        $this->assertTrue($run1->isSuccessful(), 'Run 1 must succeed: ' . $run1->getErrorOutput());
-        $contentAfterRun1 = file_get_contents($tempWebRoot . '/.htaccess');
+        $this->assertTrue($run1->isSuccessful(), 'Run 1 must succeed: '.$run1->getErrorOutput());
+        $contentAfterRun1 = file_get_contents($tempWebRoot.'/.htaccess');
 
         $this->assertStringContainsString('# php -- BEGIN cPanel-generated handler', $contentAfterRun1);
         $this->assertEquals(1, substr_count($contentAfterRun1, 'RewriteEngine On'), 'RewriteEngine On must appear exactly once after run 1.');
@@ -443,7 +444,7 @@ class DemoModeSafetyTest extends TestCase
         ]);
         $dryRun2->run();
 
-        $this->assertTrue($dryRun2->isSuccessful(), 'Dry-run 2 must succeed: ' . $dryRun2->getErrorOutput());
+        $this->assertTrue($dryRun2->isSuccessful(), 'Dry-run 2 must succeed: '.$dryRun2->getErrorOutput());
         $this->assertStringContainsString('[UNCHANGED]   .htaccess', $dryRun2->getOutput());
         $this->assertStringNotContainsString('[COLLISION]   .htaccess', $dryRun2->getOutput());
 
@@ -457,8 +458,8 @@ class DemoModeSafetyTest extends TestCase
         ], null, ['ALLOW_REPLACE' => '1']);
         $run2->run();
 
-        $this->assertTrue($run2->isSuccessful(), 'Run 2 must succeed: ' . $run2->getErrorOutput());
-        $contentAfterRun2 = file_get_contents($tempWebRoot . '/.htaccess');
+        $this->assertTrue($run2->isSuccessful(), 'Run 2 must succeed: '.$run2->getErrorOutput());
+        $contentAfterRun2 = file_get_contents($tempWebRoot.'/.htaccess');
 
         $this->assertStringContainsString('# php -- BEGIN cPanel-generated handler', $contentAfterRun2);
         $this->assertEquals(1, substr_count($contentAfterRun2, 'RewriteEngine On'), 'RewriteEngine On must still appear exactly once after repeated run.');
@@ -471,17 +472,17 @@ class DemoModeSafetyTest extends TestCase
      */
     public function test_asset_promotion_rollback_instructions_account_for_newly_introduced_files(): void
     {
-        $baseTemp = sys_get_temp_dir() . '/medicare_rollback_' . uniqid();
-        $tempApp = $baseTemp . '/app';
-        $tempWebRoot = $baseTemp . '/webroot';
+        $baseTemp = sys_get_temp_dir().'/medicare_rollback_'.uniqid();
+        $tempApp = $baseTemp.'/app';
+        $tempWebRoot = $baseTemp.'/webroot';
 
-        mkdir($tempApp . '/public', 0755, true);
-        file_put_contents($tempApp . '/public/index.php', '<?php echo "v2";');
-        file_put_contents($tempApp . '/public/robots.txt', 'User-agent: *');
-        file_put_contents($tempApp . '/public/.htaccess', 'RewriteEngine On');
+        mkdir($tempApp.'/public', 0755, true);
+        file_put_contents($tempApp.'/public/index.php', '<?php echo "v2";');
+        file_put_contents($tempApp.'/public/robots.txt', 'User-agent: *');
+        file_put_contents($tempApp.'/public/.htaccess', 'RewriteEngine On');
 
         mkdir($tempWebRoot, 0755, true);
-        file_put_contents($tempWebRoot . '/index.php', '<?php echo "v1";');
+        file_put_contents($tempWebRoot.'/index.php', '<?php echo "v1";');
 
         $scriptPath = base_path('scripts/promote_release_assets.sh');
 
@@ -494,11 +495,11 @@ class DemoModeSafetyTest extends TestCase
         ], null, ['ALLOW_REPLACE' => '1']);
         $process->run();
 
-        $this->assertTrue($process->isSuccessful(), 'Promotion should succeed: ' . $process->getErrorOutput());
+        $this->assertTrue($process->isSuccessful(), 'Promotion should succeed: '.$process->getErrorOutput());
         $output = $process->getOutput();
 
         // Rollback instructions must account for new files (mv failed webroot aside, then restore backup cleanly)
-        $this->assertStringContainsString('mv "' . $tempWebRoot . '"', $output);
+        $this->assertStringContainsString('mv "'.$tempWebRoot.'"', $output);
         $this->assertStringContainsString('_failed_', $output);
         $this->assertStringContainsString('cp -a "', $output);
         $this->assertStringNotContainsString('cp -a "${BACKUP_DIR}/." "${WEB_ROOT}/"', $output);
@@ -515,18 +516,18 @@ class DemoModeSafetyTest extends TestCase
      */
     public function test_storage_symlink_blocks_automatic_replacement_of_unexpected_active_target(): void
     {
-        $baseTemp = sys_get_temp_dir() . '/medicare_symlink_' . uniqid();
-        $tempApp = $baseTemp . '/app';
-        $tempWebRoot = $baseTemp . '/webroot';
-        $otherActiveTarget = $baseTemp . '/other_mount';
+        $baseTemp = sys_get_temp_dir().'/medicare_symlink_'.uniqid();
+        $tempApp = $baseTemp.'/app';
+        $tempWebRoot = $baseTemp.'/webroot';
+        $otherActiveTarget = $baseTemp.'/other_mount';
 
-        mkdir($tempApp . '/storage/app/public', 0755, true);
-        mkdir($tempApp . '/bootstrap/cache', 0755, true);
+        mkdir($tempApp.'/storage/app/public', 0755, true);
+        mkdir($tempApp.'/bootstrap/cache', 0755, true);
         mkdir($tempWebRoot, 0755, true);
         mkdir($otherActiveTarget, 0755, true);
 
         // Create symlink pointing to an unexpected active target
-        symlink($otherActiveTarget, $tempWebRoot . '/storage');
+        symlink($otherActiveTarget, $tempWebRoot.'/storage');
 
         $scriptPath = base_path('scripts/configure_storage_symlink.sh');
         $this->assertFileExists($scriptPath);
@@ -552,7 +553,7 @@ class DemoModeSafetyTest extends TestCase
         // Verify symlink was NOT clobbered
         $this->assertEquals(
             $otherActiveTarget,
-            readlink($tempWebRoot . '/storage'),
+            readlink($tempWebRoot.'/storage'),
             'Unexpected active symlink must remain untouched without explicit confirmation.'
         );
 
@@ -569,11 +570,11 @@ class DemoModeSafetyTest extends TestCase
 
         $this->assertTrue(
             $approvedProcess->isSuccessful(),
-            'Storage script must succeed once operator confirms stale symlink replacement: ' . $approvedProcess->getErrorOutput()
+            'Storage script must succeed once operator confirms stale symlink replacement: '.$approvedProcess->getErrorOutput()
         );
         $this->assertEquals(
-            $tempApp . '/storage/app/public',
-            readlink($tempWebRoot . '/storage'),
+            $tempApp.'/storage/app/public',
+            readlink($tempWebRoot.'/storage'),
             'Symlink must be updated to application storage target after explicit confirmation.'
         );
 
@@ -585,14 +586,14 @@ class DemoModeSafetyTest extends TestCase
      */
     public function test_storage_symlink_blocks_silent_replacement_of_physical_directory(): void
     {
-        $baseTemp = sys_get_temp_dir() . '/medicare_dir_' . uniqid();
-        $tempApp = $baseTemp . '/app';
-        $tempWebRoot = $baseTemp . '/webroot';
+        $baseTemp = sys_get_temp_dir().'/medicare_dir_'.uniqid();
+        $tempApp = $baseTemp.'/app';
+        $tempWebRoot = $baseTemp.'/webroot';
 
-        mkdir($tempApp . '/storage/app/public', 0755, true);
-        mkdir($tempApp . '/bootstrap/cache', 0755, true);
-        mkdir($tempWebRoot . '/storage', 0755, true);
-        file_put_contents($tempWebRoot . '/storage/patient_scan.pdf', 'fake PDF content');
+        mkdir($tempApp.'/storage/app/public', 0755, true);
+        mkdir($tempApp.'/bootstrap/cache', 0755, true);
+        mkdir($tempWebRoot.'/storage', 0755, true);
+        file_put_contents($tempWebRoot.'/storage/patient_scan.pdf', 'fake PDF content');
 
         $scriptPath = base_path('scripts/configure_storage_symlink.sh');
 
@@ -613,7 +614,7 @@ class DemoModeSafetyTest extends TestCase
         $this->assertStringContainsString('PHYSICAL DIRECTORY', $process->getErrorOutput());
         $this->assertStringContainsString('CONFIRM_DIR_MIGRATION=1', $process->getErrorOutput());
         $this->assertTrue(
-            is_dir($tempWebRoot . '/storage') && ! is_link($tempWebRoot . '/storage'),
+            is_dir($tempWebRoot.'/storage') && ! is_link($tempWebRoot.'/storage'),
             'Physical directory must not be removed without confirmation.'
         );
 
@@ -630,9 +631,9 @@ class DemoModeSafetyTest extends TestCase
 
         $this->assertTrue(
             $approvedProcess->isSuccessful(),
-            'Storage script must succeed with confirmation: ' . $approvedProcess->getErrorOutput()
+            'Storage script must succeed with confirmation: '.$approvedProcess->getErrorOutput()
         );
-        $this->assertTrue(is_link($tempWebRoot . '/storage'), 'Destination must now be a symlink.');
+        $this->assertTrue(is_link($tempWebRoot.'/storage'), 'Destination must now be a symlink.');
 
         $this->removeDirectory($baseTemp);
     }
@@ -642,15 +643,15 @@ class DemoModeSafetyTest extends TestCase
      */
     public function test_storage_script_enforces_least_privilege_permissions_without_broad_775(): void
     {
-        $baseTemp = sys_get_temp_dir() . '/medicare_perms_' . uniqid();
-        $tempApp = $baseTemp . '/app';
-        $tempWebRoot = $baseTemp . '/webroot';
+        $baseTemp = sys_get_temp_dir().'/medicare_perms_'.uniqid();
+        $tempApp = $baseTemp.'/app';
+        $tempWebRoot = $baseTemp.'/webroot';
 
-        mkdir($tempApp . '/storage/framework/views', 0777, true);
-        mkdir($tempApp . '/bootstrap/cache', 0777, true);
-        file_put_contents($tempApp . '/storage/framework/views/test.php', '<?php');
-        file_put_contents($tempApp . '/.env', 'APP_ENV=production');
-        chmod($tempApp . '/.env', 0666);
+        mkdir($tempApp.'/storage/framework/views', 0777, true);
+        mkdir($tempApp.'/bootstrap/cache', 0777, true);
+        file_put_contents($tempApp.'/storage/framework/views/test.php', '<?php');
+        file_put_contents($tempApp.'/.env', 'APP_ENV=production');
+        chmod($tempApp.'/.env', 0666);
 
         mkdir($tempWebRoot, 0755, true);
 
@@ -663,18 +664,18 @@ class DemoModeSafetyTest extends TestCase
         ]);
         $process->run();
 
-        $this->assertTrue($process->isSuccessful(), 'Storage script must succeed: ' . $process->getErrorOutput());
+        $this->assertTrue($process->isSuccessful(), 'Storage script must succeed: '.$process->getErrorOutput());
 
         // Check directory permission is 755 (octal 0755)
-        $dirPerms = substr(sprintf('%o', fileperms($tempApp . '/storage')), -4);
+        $dirPerms = substr(sprintf('%o', fileperms($tempApp.'/storage')), -4);
         $this->assertEquals('0755', $dirPerms, 'Directories must be 0755 for least privilege under suPHP.');
 
         // Check file permission is 644 (octal 0644)
-        $filePerms = substr(sprintf('%o', fileperms($tempApp . '/storage/framework/views/test.php')), -4);
+        $filePerms = substr(sprintf('%o', fileperms($tempApp.'/storage/framework/views/test.php')), -4);
         $this->assertEquals('0644', $filePerms, 'Files must be 0644 for least privilege.');
 
         // Check .env is 600
-        $envPerms = substr(sprintf('%o', fileperms($tempApp . '/.env')), -4);
+        $envPerms = substr(sprintf('%o', fileperms($tempApp.'/.env')), -4);
         $this->assertEquals('0600', $envPerms, '.env must be 0600.');
 
         $this->removeDirectory($baseTemp);

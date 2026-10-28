@@ -3,22 +3,26 @@
 namespace Tests\Feature;
 
 use App\Models\Appointment;
-use App\Models\ContactInquiry;
 use App\Models\Department;
 use App\Models\Doctor;
+use Database\Seeders\HospitalDataSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class PublicWebsiteTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         if (! Department::exists()) {
-            $this->seed(\Database\Seeders\HospitalDataSeeder::class);
+            $this->seed(HospitalDataSeeder::class);
         }
     }
+
     /**
      * Test that all 12 primary public pages return a successful 200 response.
      */
@@ -212,7 +216,7 @@ class PublicWebsiteTest extends TestCase
      */
     public function test_unauthorized_visitor_with_reference_cannot_retrieve_patient_personal_data(): void
     {
-        $uniqueRef = 'MC-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+        $uniqueRef = 'MC-'.date('Ymd').'-'.strtoupper(Str::random(5));
 
         $department = Department::first();
 

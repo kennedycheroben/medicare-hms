@@ -187,4 +187,3 @@ class User extends Authenticatable
         return $this->hasMany(TriageRecord::class, 'triage_nurse_id');
     }
 }
-

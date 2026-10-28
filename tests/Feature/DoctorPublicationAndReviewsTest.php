@@ -18,10 +18,15 @@ class DoctorPublicationAndReviewsTest extends TestCase
     use RefreshDatabase;
 
     private User $superAdmin;
+
     private User $receptionist;
+
     private Department $department;
+
     private Doctor $doctor;
+
     private Patient $patient;
+
     private Visit $completedVisit;
 
     protected function setUp(): void

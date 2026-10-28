@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Services\AuditService;
 use Closure;
@@ -14,8 +15,7 @@ class EnsureUserHasRole
     /**
      * Handle an incoming request and ensure the user possesses one of the required roles.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  ...$roles
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
@@ -62,7 +62,7 @@ class EnsureUserHasRole
                 resourceId: $request->path(),
                 details: [
                     'required_roles' => $roles,
-                    'user_role' => $user->role instanceof \App\Enums\UserRole ? $user->role->value : (string) $user->role,
+                    'user_role' => $user->role instanceof UserRole ? $user->role->value : (string) $user->role,
                 ],
                 outcome: 'denied',
                 actor: $user

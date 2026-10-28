@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
 
 class Doctor extends Model
@@ -107,7 +108,7 @@ class Doctor extends Model
             return asset($this->image);
         }
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $publicStorage */
+        /** @var FilesystemAdapter $publicStorage */
         $publicStorage = Storage::disk('public');
         if ($publicStorage->exists($this->image)) {
             return $publicStorage->url($this->image);
