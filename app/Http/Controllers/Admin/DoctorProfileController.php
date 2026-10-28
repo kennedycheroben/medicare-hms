@@ -95,7 +95,7 @@ class DoctorProfileController extends Controller
             'consultation_days' => ['nullable', 'string', 'max:255'],
             'consultation_hours' => ['nullable', 'string', 'max:255'],
             'room_number' => ['nullable', 'string', 'max:50'],
-            'image_file' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'image_file' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'mimetypes:image/jpeg,image/png,image/webp', 'max:2048'],
             'is_available' => ['required', 'boolean'],
             'action' => ['nullable', 'string', 'in:save_draft,submit_review'],
         ]);

@@ -7,6 +7,8 @@ use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DoctorProfileWorkflowTest extends TestCase
@@ -282,5 +284,55 @@ class DoctorProfileWorkflowTest extends TestCase
 
         // Must now be hidden from public profile route until re-approved
         $this->get(route('doctors.show', $this->doctor->id))->assertNotFound();
+    }
+
+    public function test_doctor_can_upload_jpg_and_png_photos(): void
+    {
+        Storage::fake('public');
+
+        $jpgFile = UploadedFile::fake()->image('avatar.jpg', 400, 400);
+
+        $response = $this->actingAs($this->doctorUser)
+            ->put(route('doctor.profile.update'), [
+                'name' => 'Dr. Jane Muthoni',
+                'department_id' => $this->department->id,
+                'specialty' => 'Internal Medicine Specialist',
+                'qualifications' => 'MBChB, MMed',
+                'experience_years' => 8,
+                'bio' => 'Experienced clinician specializing in chronic care.',
+                'is_available' => 1,
+                'image_file' => $jpgFile,
+                'action' => 'save_draft',
+            ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->doctor->refresh();
+
+        $this->assertNotNull($this->doctor->image);
+        $this->assertStringEndsWith('.jpg', $this->doctor->image);
+        Storage::disk('public')->assertExists($this->doctor->image);
+        $this->assertStringContainsString('storage/'.$this->doctor->image, $this->doctor->imageUrl());
+    }
+
+    public function test_system_rejects_unsupported_non_image_file_uploads(): void
+    {
+        Storage::fake('public');
+
+        $fakePdf = UploadedFile::fake()->create('document.pdf', 500, 'application/pdf');
+
+        $response = $this->actingAs($this->doctorUser)
+            ->put(route('doctor.profile.update'), [
+                'name' => 'Dr. Jane Muthoni',
+                'department_id' => $this->department->id,
+                'specialty' => 'Internal Medicine Specialist',
+                'qualifications' => 'MBChB, MMed',
+                'experience_years' => 8,
+                'bio' => 'Experienced clinician specializing in chronic care.',
+                'is_available' => 1,
+                'image_file' => $fakePdf,
+                'action' => 'save_draft',
+            ]);
+
+        $response->assertSessionHasErrors('image_file');
     }
 }
