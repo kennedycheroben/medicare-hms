@@ -337,5 +337,74 @@ class DeploymentReadinessTest extends TestCase
 
         // Ensure .htaccess preservation check is present (not blind overwrite)
         $this->assertMatchesRegularExpression('/if\s+\[\s+!\s+-f\s+.*\.htaccess\s+\]/', $content, '.htaccess must only be copied if not already present on server');
+
+        // Application sync and symlink resilience checks
+        $this->assertStringContainsString('medicare-hms-app', $content, '.cpanel.yml must support application path sync');
+        $this->assertStringContainsString('.deployed_commit', $content, '.cpanel.yml must record deployed commit SHA');
+    }
+
+    public function test_cpanel_deploy_script_passes_preflight_check(): void
+    {
+        $scriptPath = $this->projectRoot.'/scripts/cpanel_deploy.sh';
+        $this->assertFileExists($scriptPath, 'cpanel_deploy.sh must exist');
+
+        $process = new Process(['/bin/bash', $scriptPath, '--check-only']);
+        $process->setWorkingDirectory($this->projectRoot);
+        $process->run();
+
+        $this->assertTrue($process->isSuccessful(), 'cpanel_deploy.sh --check-only must exit 0: '.$process->getErrorOutput().' '.$process->getOutput());
+        $this->assertStringContainsString('[SUCCESS]', $process->getOutput());
+    }
+
+    public function test_cpanel_deploy_script_dry_run_executes_cleanly(): void
+    {
+        $scriptPath = $this->projectRoot.'/scripts/cpanel_deploy.sh';
+
+        $process = new Process(['/bin/bash', $scriptPath, '--dry-run']);
+        $process->setWorkingDirectory($this->projectRoot);
+        $process->run();
+
+        $this->assertTrue($process->isSuccessful(), 'cpanel_deploy.sh --dry-run must exit 0: '.$process->getErrorOutput());
+        $this->assertStringContainsString('[SUCCESS] Dry run preview completed successfully', $process->getOutput());
+    }
+
+    public function test_cpanel_storage_symlink_repair_handles_broken_symlink_without_file_exists_crash(): void
+    {
+        $tmpDir = sys_get_temp_dir().'/medicare_symlink_test_'.uniqid();
+        mkdir($tmpDir, 0755, true);
+
+        $appDir = $tmpDir.'/app';
+        $webDir = $tmpDir.'/web';
+        mkdir($appDir.'/storage/app/public', 0755, true);
+        mkdir($webDir, 0755, true);
+
+        // Intentionally create a broken/dangling symlink at $webDir/storage
+        symlink($tmpDir.'/non_existent_target', $webDir.'/storage');
+        $this->assertTrue(is_link($webDir.'/storage'), 'Dangling symlink should exist as link');
+        $this->assertFalse(file_exists($webDir.'/storage'), 'Dangling symlink target should not exist');
+
+        // Execute the exact symlink repair command from .cpanel.yml
+        $cmd = sprintf(
+            'if [ -L "%s/storage" ] && [ ! -d "%s/storage" ]; then rm "%s/storage"; fi; if [ ! -e "%s/storage" ] && [ ! -L "%s/storage" ] && [ -d "%s/storage/app/public" ]; then ln -s "%s/storage/app/public" "%s/storage"; fi',
+            $webDir, $webDir, $webDir, $webDir, $webDir, $appDir, $appDir, $webDir
+        );
+
+        $process = Process::fromShellCommandline($cmd);
+        $process->run();
+
+        $this->assertTrue($process->isSuccessful(), 'Symlink repair command must exit 0 without File exists error');
+        $this->assertTrue(is_link($webDir.'/storage'), 'Fixed destination must be a symlink');
+        $this->assertTrue(is_dir($webDir.'/storage'), 'Fixed destination target must be a valid directory');
+        $this->assertEquals(realpath($appDir.'/storage/app/public'), realpath($webDir.'/storage'));
+
+        // Clean up
+        @unlink($webDir.'/storage');
+        @rmdir($webDir);
+        @rmdir($appDir.'/storage/app/public');
+        @rmdir($appDir.'/storage/app');
+        @rmdir($appDir.'/storage');
+        @rmdir($appDir);
+        @rmdir($tmpDir);
     }
 }
+
