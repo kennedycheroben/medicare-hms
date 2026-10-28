@@ -94,7 +94,7 @@ class NotificationController extends Controller
             return redirect($actionUrl);
         }
 
-        return redirect()->back()->with('status', 'Notification marked as read.');
+        return redirect()->back(fallback: route('admin.notifications.index'))->with('status', 'Notification marked as read.');
     }
 
     /**

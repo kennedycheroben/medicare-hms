@@ -242,6 +242,33 @@ class HospitalNotificationTest extends TestCase
         $this->assertCount(0, $this->receptionist->fresh()->unreadNotifications);
     }
 
+    public function test_user_can_open_record_via_get_request_and_redirects_to_action_url(): void
+    {
+        $appointment = Appointment::create([
+            'reference_code' => 'MC-NAV-'.uniqid(),
+            'patient_name' => 'Navigation Patient',
+            'patient_email' => 'nav.patient@example.com',
+            'patient_phone' => '+254712345678',
+            'appointment_date' => '2026-11-10',
+            'appointment_time' => '10:00:00',
+            'status' => 'pending',
+        ]);
+
+        NotificationService::notifyAppointmentCreated($appointment);
+
+        $notification = $this->receptionist->notifications->first();
+        $this->assertNotNull($notification);
+        $expectedUrl = route('admin.appointments.show', $appointment->id);
+
+        // Click Open Record (GET /admin/notifications/{id}/read?navigate=1)
+        $response = $this->actingAs($this->receptionist)
+            ->get(route('admin.notifications.read', [$notification->id, 'navigate' => 1]));
+
+        $response->assertRedirect($expectedUrl);
+        $this->assertNotNull($notification->fresh()->read_at);
+        $this->assertCount(0, $this->receptionist->fresh()->unreadNotifications);
+    }
+
     public function test_user_cannot_mark_another_users_notification_as_read(): void
     {
         $appointment = Appointment::create([

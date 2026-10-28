@@ -124,7 +124,7 @@ Route::prefix('admin')->middleware(['auth:web', 'active'])->group(function () {
     // Notifications (All authenticated staff)
     Route::get('/notifications', [NotificationController::class, 'index'])->name('admin.notifications.index');
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('admin.notifications.unread-count');
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('admin.notifications.read');
+    Route::match(['GET', 'POST'], '/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('admin.notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('admin.notifications.read-all');
 
     // Notification Oversight (SuperAdmin & Hospital Director)
