@@ -263,10 +263,10 @@ class DeploymentReadinessTest extends TestCase
 
         // Validate that forbidden patterns are defined in packaging script
         $scriptContent = file_get_contents($scriptPath);
-        $this->assertStringContainsString("FORBIDDEN_PATTERNS=(", $scriptContent);
-        $this->assertStringContainsString("node_modules/", $scriptContent);
-        $this->assertStringContainsString("phpunit\\.xml", $scriptContent);
-        $this->assertStringContainsString("\\.key$", $scriptContent);
+        $this->assertStringContainsString('FORBIDDEN_PATTERNS=(', $scriptContent);
+        $this->assertStringContainsString('node_modules/', $scriptContent);
+        $this->assertStringContainsString('phpunit\\.xml', $scriptContent);
+        $this->assertStringContainsString('\\.key$', $scriptContent);
     }
 
     // =========================================================================
@@ -407,4 +407,3 @@ class DeploymentReadinessTest extends TestCase
         @rmdir($tmpDir);
     }
 }
-

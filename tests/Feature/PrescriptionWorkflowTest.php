@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
-use App\Models\AuditLog;
 use App\Models\Consultation;
 use App\Models\Department;
 use App\Models\Doctor;
@@ -23,14 +22,23 @@ class PrescriptionWorkflowTest extends TestCase
     use RefreshDatabase;
 
     protected User $doctorUser;
+
     protected User $pharmacist;
+
     protected User $receptionist;
+
     protected Doctor $doctorProfile;
+
     protected Department $department;
+
     protected Patient $patient;
+
     protected Visit $visit;
+
     protected Consultation $consultation;
+
     protected Medicine $amoxicillin;
+
     protected Medicine $paracetamol;
 
     protected function setUp(): void

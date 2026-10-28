@@ -92,6 +92,7 @@ class AuditService
         foreach ($data as $key => $value) {
             if (in_array(strtolower((string) $key), self::REDACTED_KEYS, true)) {
                 $sanitized[$key] = '[REDACTED]';
+
                 continue;
             }
 

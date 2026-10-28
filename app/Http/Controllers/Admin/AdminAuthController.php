@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuditService;
@@ -117,7 +118,7 @@ class AdminAuthController extends Controller
             resourceType: 'user',
             resourceId: (string) $user->id,
             details: [
-                'role' => $user->role instanceof \App\Enums\UserRole ? $user->role->value : (string) $user->role,
+                'role' => $user->role instanceof UserRole ? $user->role->value : (string) $user->role,
                 'ip' => $request->ip(),
             ],
             outcome: 'success',

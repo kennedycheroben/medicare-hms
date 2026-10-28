@@ -90,13 +90,14 @@ class DoctorReview extends Model
 
         // Full name may only be displayed when explicit consent is granted
         if ($this->public_consent && $this->display_name_type === 'full_name') {
-            return trim($this->patient->first_name . ' ' . $this->patient->last_name);
+            return trim($this->patient->first_name.' '.$this->patient->last_name);
         }
 
         // Initials option
         if ($this->display_name_type === 'initials') {
             $firstInitial = mb_substr($this->patient->first_name, 0, 1);
             $lastInitial = mb_substr($this->patient->last_name, 0, 1);
+
             return strtoupper("{$firstInitial}. {$lastInitial}.");
         }
 

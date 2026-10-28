@@ -7,6 +7,7 @@ use App\Models\Consultation;
 use App\Models\Medicine;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
+use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,7 +43,7 @@ class PrescriptionController extends Controller
      */
     public function store(Request $request, Consultation $consultation): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         // Enforce that only the attending/authoring doctor can prescribe
@@ -138,7 +139,7 @@ class PrescriptionController extends Controller
      */
     public function finalize(Request $request, Prescription $prescription): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if ($prescription->prescriber_id !== $user->id && ! $user->isSuperAdmin()) {
@@ -173,7 +174,7 @@ class PrescriptionController extends Controller
      */
     public function cancel(Request $request, Prescription $prescription): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         // Allowed for doctor (prescriber) or pharmacist
@@ -203,7 +204,7 @@ class PrescriptionController extends Controller
                 if ($item->dispense_status !== 'dispensed') {
                     $item->update([
                         'dispense_status' => 'cancelled',
-                        'non_dispense_reason' => 'Cancelled as part of prescription cancellation: ' . $validated['cancellation_reason'],
+                        'non_dispense_reason' => 'Cancelled as part of prescription cancellation: '.$validated['cancellation_reason'],
                     ]);
                 }
             }

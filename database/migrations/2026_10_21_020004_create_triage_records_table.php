@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('visit_id')->unique()->constrained('visits')->cascadeOnDelete();
             $table->foreignId('patient_id')->constrained('patients')->cascadeOnDelete();
             $table->foreignId('triage_nurse_id')->constrained('users')->cascadeOnDelete();
-            
+
             // Vital Signs
             $table->unsignedSmallInteger('systolic_bp')->nullable(); // mmHg
             $table->unsignedSmallInteger('diastolic_bp')->nullable(); // mmHg

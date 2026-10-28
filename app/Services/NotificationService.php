@@ -7,6 +7,7 @@ use App\Models\Appointment;
 use App\Models\ContactInquiry;
 use App\Models\Doctor;
 use App\Models\Medicine;
+use App\Models\StaffTask;
 use App\Models\User;
 use App\Notifications\HospitalNotification;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +81,70 @@ class NotificationService
         );
 
         Notification::send($recipients, $notification);
+    }
+
+    /**
+     * Dispatch notification when appointment is reassigned to a different doctor.
+     */
+    public static function notifyAppointmentReassigned(Appointment $appointment, ?Doctor $formerDoctor, Doctor $newDoctor): void
+    {
+        $reference = $appointment->reference_code ?? $appointment->appointment_number ?? '#'.$appointment->id;
+        $appointmentDate = $appointment->appointment_date ? $appointment->appointment_date->format('Y-m-d') : 'scheduled date';
+
+        // 1. Notify newly assigned doctor
+        $newDoctorUser = User::where('is_active', true)
+            ->where('doctor_id', $newDoctor->id)
+            ->first();
+
+        if ($newDoctorUser) {
+            $notification = new HospitalNotification(
+                category: 'appointment',
+                eventType: 'appointment.assigned',
+                title: "Appointment Assigned ({$reference})",
+                message: "Appointment {$reference} has been assigned to you for {$appointmentDate}.",
+                actionUrl: route('admin.appointments.show', $appointment->id),
+                recordType: 'appointment',
+                recordId: (string) $appointment->id
+            );
+            $newDoctorUser->notify($notification);
+        }
+
+        // 2. Notify former doctor about reassignment (if different and active)
+        if ($formerDoctor && (! $newDoctorUser || (int) $formerDoctor->id !== (int) $newDoctor->id)) {
+            $formerDoctorUser = User::where('is_active', true)
+                ->where('doctor_id', $formerDoctor->id)
+                ->first();
+
+            if ($formerDoctorUser) {
+                $formerNotice = new HospitalNotification(
+                    category: 'appointment',
+                    eventType: 'appointment.reassigned',
+                    title: "Appointment Reassigned ({$reference})",
+                    message: "Appointment {$reference} previously assigned to you has been reassigned to Dr. {$newDoctor->name}.",
+                    actionUrl: route('admin.appointments.index'),
+                    recordType: 'appointment',
+                    recordId: (string) $appointment->id
+                );
+                $formerDoctorUser->notify($formerNotice);
+            }
+        }
+
+        // 3. Notify coordination staff (receptionists and super admin)
+        $staff = User::where('is_active', true)
+            ->whereIn('role', [UserRole::RECEPTIONIST->value, UserRole::SUPER_ADMIN->value])
+            ->get();
+
+        $coordinationNotice = new HospitalNotification(
+            category: 'appointment',
+            eventType: 'appointment.reassigned',
+            title: "Appointment Reassigned ({$reference})",
+            message: "Appointment {$reference} was reassigned to Dr. {$newDoctor->name}.",
+            actionUrl: route('admin.appointments.show', $appointment->id),
+            recordType: 'appointment',
+            recordId: (string) $appointment->id
+        );
+
+        Notification::send($staff, $coordinationNotice);
     }
 
     /**
@@ -251,11 +316,79 @@ class NotificationService
             eventType: 'contact.enquiry',
             title: "New Public Contact Enquiry ({$contact->subject})",
             message: "A new public message regarding '{$contact->subject}' has been received.",
-            actionUrl: route('admin.dashboard'),
+            actionUrl: route('admin.inquiries.show', $contact->id),
             recordType: 'contact',
             recordId: (string) $contact->id
         );
 
         Notification::send($recipients, $notification);
+    }
+
+    /**
+     * Dispatch notification when a staff task is assigned.
+     */
+    public static function notifyTaskAssigned(StaffTask $task): void
+    {
+        $task->loadMissing('assignee', 'creator');
+
+        if (! $task->assignee || ! $task->assignee->isActive()) {
+            return;
+        }
+
+        $priorityLabel = strtoupper($task->priority);
+        $creatorName = $task->creator?->name ?? 'Staff Administration';
+        $dueInfo = $task->due_date ? ' Due by '.$task->due_date->format('M d, Y').'.' : '';
+
+        $notification = new HospitalNotification(
+            category: 'task',
+            eventType: 'task.assigned',
+            title: "[{$priorityLabel}] New Task: {$task->title}",
+            message: "You have been assigned a task by {$creatorName}: {$task->title}.{$dueInfo}",
+            actionUrl: route('admin.tasks.show', $task->id),
+            recordType: 'staff_task',
+            recordId: (string) $task->id
+        );
+
+        $task->assignee->notify($notification);
+    }
+
+    /**
+     * Dispatch notification when a staff task is reassigned.
+     */
+    public static function notifyTaskReassigned(StaffTask $task, ?User $formerAssignee, User $newAssignee): void
+    {
+        $task->loadMissing('creator');
+
+        $priorityLabel = strtoupper($task->priority);
+        $creatorName = $task->creator?->name ?? 'Staff Administration';
+        $dueInfo = $task->due_date ? ' Due by '.$task->due_date->format('M d, Y').'.' : '';
+
+        // Notify new assignee
+        if ($newAssignee->isActive()) {
+            $notification = new HospitalNotification(
+                category: 'task',
+                eventType: 'task.assigned',
+                title: "[{$priorityLabel}] Task Reassigned to You: {$task->title}",
+                message: "You have been assigned task '{$task->title}' by {$creatorName}.{$dueInfo}",
+                actionUrl: route('admin.tasks.show', $task->id),
+                recordType: 'staff_task',
+                recordId: (string) $task->id
+            );
+            $newAssignee->notify($notification);
+        }
+
+        // Notify former assignee
+        if ($formerAssignee && $formerAssignee->id !== $newAssignee->id && $formerAssignee->isActive()) {
+            $formerNotice = new HospitalNotification(
+                category: 'task',
+                eventType: 'task.reassigned',
+                title: "Task Reassigned: {$task->title}",
+                message: "Task '{$task->title}' has been reassigned to {$newAssignee->name}.",
+                actionUrl: route('admin.tasks.index'),
+                recordType: 'staff_task',
+                recordId: (string) $task->id
+            );
+            $formerAssignee->notify($formerNotice);
+        }
     }
 }

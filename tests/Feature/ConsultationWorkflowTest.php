@@ -3,9 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
-use App\Models\AuditLog;
 use App\Models\Consultation;
-use App\Models\ConsultationAddendum;
 use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\Patient;
@@ -22,14 +20,23 @@ class ConsultationWorkflowTest extends TestCase
     use RefreshDatabase;
 
     protected User $superAdmin;
+
     protected User $doctorUser1;
+
     protected User $doctorUser2;
+
     protected User $nurse;
+
     protected User $receptionist;
+
     protected Doctor $doctorProfile1;
+
     protected Doctor $doctorProfile2;
+
     protected Department $department;
+
     protected Patient $patient;
+
     protected Visit $visit;
 
     protected function setUp(): void

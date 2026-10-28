@@ -16,7 +16,6 @@ use App\Services\AuditService;
 use Database\Seeders\HospitalDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
@@ -26,12 +25,19 @@ class SecurityHardeningAndPenetrationTest extends TestCase
     use RefreshDatabase;
 
     protected User $superAdmin;
+
     protected User $doctorUser;
+
     protected User $nurseUser;
+
     protected User $receptionistUser;
+
     protected Doctor $doctorProfile;
+
     protected Department $department;
+
     protected Patient $patient;
+
     protected Visit $visit;
 
     protected function setUp(): void
@@ -160,7 +166,7 @@ class SecurityHardeningAndPenetrationTest extends TestCase
             $this->assertStringContainsString("base-uri 'self'", $csp);
             $this->assertStringContainsString("form-action 'self'", $csp);
             $this->assertStringNotContainsString("'unsafe-eval'", $csp, "CSP must not permit unsafe-eval on route: {$route}");
-            $this->assertStringNotContainsString("cdn.jsdelivr.net", $csp, "CSP must not whitelist unused CDN on route: {$route}");
+            $this->assertStringNotContainsString('cdn.jsdelivr.net', $csp, "CSP must not whitelist unused CDN on route: {$route}");
 
             // Server signature leakage prevention
             $this->assertNull($response->headers->get('X-Powered-By'), "X-Powered-By leaked on route: {$route}");

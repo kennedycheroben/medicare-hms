@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Medicine;
 use App\Models\MedicineBatch;
-use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,7 +16,9 @@ class InventoryIntegrityAndTransactionsTest extends TestCase
     use RefreshDatabase;
 
     private User $pharmacist;
+
     private User $doctor;
+
     private InventoryService $inventoryService;
 
     protected function setUp(): void
@@ -43,9 +44,9 @@ class InventoryIntegrityAndTransactionsTest extends TestCase
         $counter++;
 
         return Medicine::create(array_merge([
-            'code' => 'MED-TEST-' . $counter,
-            'brand_name' => 'Test Medicine ' . $counter,
-            'generic_name' => 'Generic ' . $counter,
+            'code' => 'MED-TEST-'.$counter,
+            'brand_name' => 'Test Medicine '.$counter,
+            'generic_name' => 'Generic '.$counter,
             'category' => 'General',
             'dosage_form' => 'tablet',
             'strength' => '500mg',
@@ -62,7 +63,7 @@ class InventoryIntegrityAndTransactionsTest extends TestCase
 
         return MedicineBatch::create(array_merge([
             'medicine_id' => $medicine->id,
-            'batch_number' => 'BTH-TEST-' . $batchCounter,
+            'batch_number' => 'BTH-TEST-'.$batchCounter,
             'expiry_date' => now()->addMonths(12)->format('Y-m-d'),
             'quantity_initial' => 100,
             'quantity_current' => 100,

@@ -11,7 +11,6 @@ use App\Models\Doctor;
 use App\Models\Medicine;
 use App\Models\MedicineBatch;
 use App\Models\Patient;
-use App\Models\Prescription;
 use App\Models\User;
 use App\Models\Visit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,7 +21,9 @@ class AdminDashboardRedesignTest extends TestCase
     use RefreshDatabase;
 
     protected User $superAdmin;
+
     protected Department $cardiology;
+
     protected Doctor $doctor;
 
     protected function setUp(): void
@@ -99,8 +100,8 @@ class AdminDashboardRedesignTest extends TestCase
 
         foreach ($roles as $role) {
             $user = User::create([
-                'name' => 'Staff Member ' . $role->value,
-                'email' => 'staff.' . $role->value . '@medicare.local',
+                'name' => 'Staff Member '.$role->value,
+                'email' => 'staff.'.$role->value.'@medicare.local',
                 'password' => bcrypt('SecretPassword123!'),
                 'role' => $role,
                 'is_active' => true,

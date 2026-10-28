@@ -55,8 +55,14 @@ class Article extends Model
             return $this->cover_image_path;
         }
 
-        if (Storage::disk('public')->exists($this->cover_image_path)) {
-            return Storage::disk('public')->url($this->cover_image_path);
+        $cleanPath = ltrim(preg_replace('#^storage/#', '', $this->cover_image_path), '/');
+
+        if (Storage::disk('public')->exists($cleanPath)) {
+            return Storage::disk('public')->url($cleanPath);
+        }
+
+        if (file_exists(public_path('storage/'.$cleanPath))) {
+            return asset('storage/'.$cleanPath);
         }
 
         if (file_exists(public_path($this->cover_image_path))) {

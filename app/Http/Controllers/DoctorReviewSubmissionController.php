@@ -10,7 +10,6 @@ use App\Rules\ValidPhoneNumber;
 use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class DoctorReviewSubmissionController extends Controller
 {

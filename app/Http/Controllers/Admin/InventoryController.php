@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Medicine;
 use App\Models\MedicineBatch;
 use App\Models\StockMovement;
+use App\Models\User;
 use App\Services\AuditService;
+use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -68,7 +69,7 @@ class InventoryController extends Controller
      */
     public function storeMedicine(Request $request): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['pharmacist', 'super_admin'])) {
@@ -132,9 +133,9 @@ class InventoryController extends Controller
     public function storeBatch(
         Request $request,
         Medicine $medicine,
-        \App\Services\InventoryService $inventoryService
+        InventoryService $inventoryService
     ): RedirectResponse {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['pharmacist', 'super_admin'])) {
@@ -170,9 +171,9 @@ class InventoryController extends Controller
     public function adjustStock(
         Request $request,
         MedicineBatch $batch,
-        \App\Services\InventoryService $inventoryService
+        InventoryService $inventoryService
     ): RedirectResponse {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['pharmacist', 'super_admin'])) {
@@ -206,9 +207,9 @@ class InventoryController extends Controller
     public function otcSale(
         Request $request,
         Medicine $medicine,
-        \App\Services\InventoryService $inventoryService
+        InventoryService $inventoryService
     ): RedirectResponse {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['pharmacist', 'super_admin'])) {
@@ -246,9 +247,9 @@ class InventoryController extends Controller
     public function internalUse(
         Request $request,
         MedicineBatch $batch,
-        \App\Services\InventoryService $inventoryService
+        InventoryService $inventoryService
     ): RedirectResponse {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['pharmacist', 'super_admin'])) {
@@ -282,9 +283,9 @@ class InventoryController extends Controller
     public function wastage(
         Request $request,
         MedicineBatch $batch,
-        \App\Services\InventoryService $inventoryService
+        InventoryService $inventoryService
     ): RedirectResponse {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['pharmacist', 'super_admin'])) {
@@ -316,9 +317,9 @@ class InventoryController extends Controller
     public function returnStock(
         Request $request,
         MedicineBatch $batch,
-        \App\Services\InventoryService $inventoryService
+        InventoryService $inventoryService
     ): RedirectResponse {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['pharmacist', 'super_admin'])) {

@@ -8,12 +8,15 @@ use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\Patient;
+use App\Models\User;
 use App\Models\Visit;
 use App\Services\AuditService;
+use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class AppointmentManagementController extends Controller
@@ -23,7 +26,7 @@ class AppointmentManagementController extends Controller
      */
     public function index(Request $request): View
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         $status = $request->input('status');
@@ -98,10 +101,23 @@ class AppointmentManagementController extends Controller
      */
     public function show(Appointment $appointment): View
     {
-        $appointment->load(['department', 'doctor', 'patient.visits', 'visit.triageRecord', 'confirmedBy', 'cancelledBy', 'rescheduledBy']);
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Role-based access control: Doctor can only access appointments assigned to them or within their clinical department
+        if ($user->hasRole('doctor') && ! $user->hasRole(['super_admin', 'hospital_director', 'receptionist'])) {
+            $doctorMatches = $user->doctor_id && (int) $appointment->doctor_id === (int) $user->doctor_id;
+            $deptMatches = $user->getClinicalDepartmentId() && (int) $appointment->department_id === (int) $user->getClinicalDepartmentId();
+
+            if (! $doctorMatches && ! $deptMatches) {
+                abort(403, 'Unauthorized. Access is restricted to appointments assigned to you or within your clinical department.');
+            }
+        }
+
+        $appointment->load(['department', 'doctor', 'preferredDoctor', 'assignedBy', 'patient.visits', 'visit.triageRecord', 'confirmedBy', 'cancelledBy', 'rescheduledBy']);
 
         $departments = Department::where('is_active', true)->orderBy('name')->get();
-        $doctors = Doctor::where('is_available', true)->orderBy('name')->get();
+        $doctors = Doctor::where('is_available', true)->where('status', 'approved')->orderBy('name')->get();
 
         // Potential matching patients if not yet linked
         $potentialPatients = collect();
@@ -145,11 +161,112 @@ class AppointmentManagementController extends Controller
     }
 
     /**
+     * Receptionist or administrative assignment/reassignment of an eligible doctor to an appointment.
+     */
+    public function assign(Request $request, Appointment $appointment): RedirectResponse
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if (! $user->hasRole(['super_admin', 'receptionist'])) {
+            abort(403, 'Unauthorized. Doctor assignment is restricted to admissions reception and hospital administration.');
+        }
+
+        if (in_array($appointment->status, ['cancelled', 'completed'], true)) {
+            return back()->withErrors(['status' => "Appointment {$appointment->reference_code} cannot be assigned or reassigned from status {$appointment->status}."]);
+        }
+
+        $validated = $request->validate([
+            'doctor_id' => ['required', 'exists:doctors,id'],
+            'triage_notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $doctor = Doctor::findOrFail($validated['doctor_id']);
+
+        // Doctor eligibility validation: must be active, published, and approved
+        if (! $doctor->is_available || ! $doctor->is_published || $doctor->status !== 'approved') {
+            return back()->withInput()->withErrors([
+                'doctor_id' => "Dr. {$doctor->name} is currently not available for clinical assignments.",
+            ]);
+        }
+
+        // Doctor must have an active linked staff account in system
+        $doctorUser = User::where('is_active', true)
+            ->where('doctor_id', $doctor->id)
+            ->first();
+        if (! $doctorUser) {
+            return back()->withInput()->withErrors([
+                'doctor_id' => "Dr. {$doctor->name} does not have an active linked staff account.",
+            ]);
+        }
+
+        // Check scheduling conflicts (overlapping active appointments at the same date and time slot)
+        $conflict = Appointment::where('doctor_id', $doctor->id)
+            ->where('id', '!=', $appointment->id)
+            ->whereDate('appointment_date', $appointment->appointment_date)
+            ->where('appointment_time', $appointment->appointment_time)
+            ->whereIn('status', ['confirmed', 'rescheduled'])
+            ->exists();
+
+        if ($conflict) {
+            return back()->withInput()->withErrors([
+                'doctor_id' => "Dr. {$doctor->name} already has a consultation scheduled for {$appointment->appointment_date?->format('Y-m-d')} during slot {$appointment->appointment_time}.",
+            ]);
+        }
+
+        $formerDoctor = $appointment->doctor;
+        $isReassignment = $formerDoctor && (int) $formerDoctor->id !== (int) $doctor->id;
+
+        DB::transaction(function () use ($appointment, $doctor, $validated, $user, $formerDoctor, $isReassignment) {
+            $appointment->update([
+                'doctor_id' => $doctor->id,
+                'department_id' => $doctor->department_id ?? $appointment->department_id,
+                'assigned_by' => $user->id,
+                'assigned_at' => now(),
+                'triage_notes' => $validated['triage_notes'] ?? $appointment->triage_notes,
+            ]);
+
+            AuditService::record(
+                action: $isReassignment ? 'appointment.reassigned' : 'appointment.assigned',
+                resourceType: 'appointment',
+                resourceId: (string) $appointment->id,
+                details: [
+                    'reference_code' => $appointment->reference_code,
+                    'patient_name' => $appointment->patient_name,
+                    'assigned_doctor_id' => $doctor->id,
+                    'assigned_doctor_name' => $doctor->name,
+                    'former_doctor_id' => $formerDoctor?->id,
+                    'is_reassignment' => $isReassignment,
+                ],
+                outcome: 'success',
+                actor: $user
+            );
+        });
+
+        // Notifications dispatched outside transaction
+        try {
+            if ($isReassignment) {
+                NotificationService::notifyAppointmentReassigned($appointment, $formerDoctor, $doctor);
+            } else {
+                NotificationService::notifyAppointmentAssigned($appointment);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to dispatch appointment assignment notification: '.$e->getMessage());
+        }
+
+        $msg = $isReassignment
+            ? "Appointment {$appointment->reference_code} successfully reassigned to Dr. {$doctor->name}."
+            : "Appointment {$appointment->reference_code} successfully assigned to Dr. {$doctor->name}.";
+
+        return redirect()->route('admin.appointments.show', $appointment->id)->with('status', $msg);
+    }
+
+    /**
      * Confirm a pending or rescheduled appointment.
      */
     public function confirm(Request $request, Appointment $appointment): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'receptionist'])) {
@@ -166,10 +283,44 @@ class AppointmentManagementController extends Controller
             'triage_notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $newDoctorId = $validated['doctor_id'] ?? $appointment->doctor_id;
+        $newDoctor = $newDoctorId ? Doctor::find($newDoctorId) : null;
+        $formerDoctor = $appointment->doctor;
+        $isDoctorAssigned = false;
+        $isReassignment = false;
+
+        if ($newDoctor) {
+            if (! $newDoctor->is_available) {
+                return back()->withInput()->withErrors([
+                    'doctor_id' => "Dr. {$newDoctor->name} is currently not available for clinical assignment.",
+                ]);
+            }
+
+            $conflict = Appointment::where('doctor_id', $newDoctor->id)
+                ->where('id', '!=', $appointment->id)
+                ->whereDate('appointment_date', $appointment->appointment_date)
+                ->where('appointment_time', $appointment->appointment_time)
+                ->whereIn('status', ['confirmed', 'rescheduled'])
+                ->exists();
+
+            if ($conflict) {
+                return back()->withInput()->withErrors([
+                    'doctor_id' => "Dr. {$newDoctor->name} already has a consultation scheduled for {$appointment->appointment_date?->format('Y-m-d')} during slot {$appointment->appointment_time}.",
+                ]);
+            }
+
+            if (! $appointment->assigned_at || (int) $appointment->doctor_id !== (int) $newDoctor->id) {
+                $isDoctorAssigned = true;
+                $isReassignment = $formerDoctor && (int) $formerDoctor->id !== (int) $newDoctor->id;
+            }
+        }
+
         $appointment->update([
             'status' => 'confirmed',
-            'department_id' => $validated['department_id'] ?? $appointment->department_id,
-            'doctor_id' => $validated['doctor_id'] ?? $appointment->doctor_id,
+            'department_id' => $validated['department_id'] ?? ($newDoctor?->department_id ?? $appointment->department_id),
+            'doctor_id' => $newDoctorId,
+            'assigned_by' => $newDoctorId ? ($appointment->assigned_by ?? $user->id) : null,
+            'assigned_at' => $newDoctorId ? ($appointment->assigned_at ?? now()) : null,
             'triage_notes' => $validated['triage_notes'] ?? $appointment->triage_notes,
             'confirmed_at' => now(),
             'confirmed_by' => $user->id,
@@ -189,6 +340,18 @@ class AppointmentManagementController extends Controller
             actor: $user
         );
 
+        if ($isDoctorAssigned && $newDoctor) {
+            try {
+                if ($isReassignment) {
+                    NotificationService::notifyAppointmentReassigned($appointment, $formerDoctor, $newDoctor);
+                } else {
+                    NotificationService::notifyAppointmentAssigned($appointment);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Failed to dispatch appointment assignment notification on confirm: '.$e->getMessage());
+            }
+        }
+
         return redirect()->route('admin.appointments.show', $appointment->id)
             ->with('status', "Appointment {$appointment->reference_code} confirmed successfully.");
     }
@@ -198,7 +361,7 @@ class AppointmentManagementController extends Controller
      */
     public function reschedule(Request $request, Appointment $appointment): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'receptionist'])) {
@@ -256,7 +419,7 @@ class AppointmentManagementController extends Controller
      */
     public function cancel(Request $request, Appointment $appointment): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'receptionist'])) {
@@ -299,7 +462,7 @@ class AppointmentManagementController extends Controller
      */
     public function reconcile(Request $request, Appointment $appointment): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'receptionist'])) {
@@ -338,7 +501,7 @@ class AppointmentManagementController extends Controller
      */
     public function checkIn(Request $request, Appointment $appointment): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasRole(['super_admin', 'receptionist'])) {

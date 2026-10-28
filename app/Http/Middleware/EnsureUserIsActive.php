@@ -14,7 +14,7 @@ class EnsureUserIsActive
     /**
      * Handle an incoming request to verify that the authenticated staff account remains active.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {

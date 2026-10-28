@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Appointment extends Model
 {
@@ -18,6 +19,9 @@ class Appointment extends Model
         'patient_phone',
         'department_id',
         'doctor_id',
+        'preferred_doctor_id',
+        'assigned_by',
+        'assigned_at',
         'appointment_date',
         'appointment_time',
         'symptoms',
@@ -40,6 +44,7 @@ class Appointment extends Model
         'confirmed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'rescheduled_at' => 'datetime',
+        'assigned_at' => 'datetime',
     ];
 
     public function patient(): BelongsTo
@@ -47,7 +52,7 @@ class Appointment extends Model
         return $this->belongsTo(Patient::class);
     }
 
-    public function visit(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function visit(): HasOne
     {
         return $this->hasOne(Visit::class);
     }
@@ -60,6 +65,21 @@ class Appointment extends Model
     public function doctor(): BelongsTo
     {
         return $this->belongsTo(Doctor::class);
+    }
+
+    public function preferredDoctor(): BelongsTo
+    {
+        return $this->belongsTo(Doctor::class, 'preferred_doctor_id');
+    }
+
+    public function assignedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    public function isAssigned(): bool
+    {
+        return ! empty($this->doctor_id) && ! empty($this->assigned_at);
     }
 
     public function confirmedBy(): BelongsTo

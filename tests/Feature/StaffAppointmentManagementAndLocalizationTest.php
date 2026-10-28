@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Appointment;
-use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\Patient;
@@ -20,9 +19,13 @@ class StaffAppointmentManagementAndLocalizationTest extends TestCase
     use RefreshDatabase;
 
     protected User $superAdmin;
+
     protected User $receptionist;
+
     protected User $doctorUser;
+
     protected Department $cardiology;
+
     protected Doctor $doctor;
 
     protected function setUp(): void
@@ -234,7 +237,7 @@ class StaffAppointmentManagementAndLocalizationTest extends TestCase
 
     public function test_kenyan_phone_validation_rule(): void
     {
-        $rule = new ValidPhoneNumber();
+        $rule = new ValidPhoneNumber;
 
         // Valid Kenyan mobile numbers
         $validNumbers = [
