@@ -1,8 +1,8 @@
 # MediCare Hospital Management System — Truehost & cPanel Production Deployment Runbook
 
-- **Document Version:** 1.2.0
+- **Document Version:** 1.3.0
 - **Target Environment:** Truehost Cloud Shared Hosting / cPanel Linux Environment
-- **Stack:** PHP 8.3 / 8.4, MariaDB 10.4+ / MySQL 8.0, Apache/LiteSpeed, Laravel 13, Bootstrap, Blade
+- **Stack:** PHP 8.4, MySQL 8.0, Apache/LiteSpeed, Laravel 13, Bootstrap, Blade
 - **Production Domain:** `medicare.kennedycheroben.co.ke` (HMS Demonstration Platform)
 - **cPanel Username:** `xqtrqexj`
 - **Target Git Branch:** `fix/release-readiness-audit` (Approved Release Candidate Branch)
@@ -130,30 +130,41 @@ Log in via SSH or cPanel Terminal:
 
 #### Method 1: Git-Based Deployment via cPanel Git Version Control or SSH (Recommended)
 
-##### Option A: cPanel Git™ Version Control Web Interface
-1. In cPanel, navigate to **Git™ Version Control**.
-2. Manage the repository at `/home/xqtrqexj/medicare-hms-app`.
-3. Under **Pull or Deploy**:
-   - Click **Update from Remote** to pull the latest commits from the remote repository.
+##### Option A: cPanel Git™ Version Control Web Interface (1-Click Deployment)
+1. In cPanel, navigate to **Git™ Version Control** (`Files > Git™ Version Control`).
+2. Manage the repository (e.g. `/home/xqtrqexj/medicare-hms-app` or `/home/xqtrqexj/repositories/medicare-hms`).
+3. Ensure the active tracked branch is **`main`**.
+4. Under **Pull or Deploy**:
+   - Click **Update from Remote** to pull the latest commits from GitHub into the server repository.
    - Click **Deploy HEAD Commit** to trigger the automated, non-destructive deployment tasks defined in `.cpanel.yml`.
-4. The `.cpanel.yml` deployment tasks safely synchronize the public bridge `index.php`, `favicon.ico`, `robots.txt`, and frontend assets (`admin-assets/`, `assets/`, `build/`) into the public document root `/home/xqtrqexj/medicare.kennedycheroben.co.ke/`, preserving server-specific `.htaccess` configurations and never overwriting `.env` or application secrets.
+5. The hardened `.cpanel.yml` deployment workflow executes automatically:
+   - **Application Code Synchronization:** Safely synchronizes `app/`, `bootstrap/`, `config/`, `database/`, `resources/`, `routes/`, `scripts/`, `artisan`, and composer files to `/home/xqtrqexj/medicare-hms-app/` if the Git repository is hosted externally.
+   - **Secret & State Preservation:** Strictly preserves `/home/xqtrqexj/medicare-hms-app/.env`, user media in `storage/app/public`, and composer dependencies in `vendor/`.
+   - **Public Web Root Asset Synchronization:** Safely synchronizes front controller `index.php`, `favicon.ico`, `robots.txt`, and compiled frontend assets (`admin-assets/`, `assets/`, `build/`) into `/home/xqtrqexj/medicare.kennedycheroben.co.ke/`.
+   - **Web Server Handler Preservation:** Preserves existing `.htaccess` with cPanel MultiPHP / CloudLinux PHP 8.4 handlers.
+   - **Defensive Storage Symlink:** Detects and repairs broken or dangling symlinks without `File exists` crashes, while preserving existing valid links and physical directories.
+   - **Least-Privilege Security:** Sets `755` on public directories, `644` on public files, and `600` on `.env`.
+   - **Audit Traceability:** Writes the active commit SHA to `.deployed_commit` in both the application root and public web root.
 
 ##### Option B: Terminal / SSH Workflow
 ```bash
-# Clone the verified release candidate branch directly outside document root:
-git clone -b fix/release-readiness-audit https://github.com/kennedycheroben/medicare-hms.git /home/xqtrqexj/medicare-hms-app
-
-# For subsequent updates on this branch:
+# Pull tested release on main:
 cd /home/xqtrqexj/medicare-hms-app
-git fetch origin fix/release-readiness-audit
-git checkout fix/release-readiness-audit
-git pull origin fix/release-readiness-audit
+git fetch origin main
+git checkout main
+git pull origin main
+
+# Preview deployment operations non-destructively:
+./scripts/cpanel_deploy.sh --dry-run
+
+# Execute full automated deployment:
+./scripts/cpanel_deploy.sh
 ```
 
 > [!IMPORTANT]
-> **Branch & Commit Boundary Enforcement:**
-> The approved release fixes (demo safety disclaimers, emergency link suppression, hardened promotion, least-privilege permissions, and defensive symlink management) exist on `fix/release-readiness-audit`.
-> **DO NOT** deploy from `main` while changes exist only on this audit branch. **DO NOT** merge into `main` without explicit owner authorization.
+> **Database Reconciliation & Schema Migrations Gate:**
+> Ordinary code deployments (`Deploy HEAD Commit` or `scripts/cpanel_deploy.sh`) are strictly non-destructive and schema-neutral; they DO NOT run migrations automatically.
+> Production database maintenance must be executed as a separately gated procedure following `docs/production-repair-runbook.md` after verified backups are confirmed.
 
 #### Method 2: Release Archive Upload (Fallback)
 If SSH/Git is unavailable, upload `medicare-hms-deploy.tar.gz` to `/home/xqtrqexj/medicare-hms-app` and extract:

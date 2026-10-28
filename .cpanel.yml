@@ -1,8 +1,11 @@
 ---
 deployment:
   tasks:
+    - export APPPATH=/home/xqtrqexj/medicare-hms-app
     - export DEPLOYPATH=/home/xqtrqexj/medicare.kennedycheroben.co.ke
-    - /bin/mkdir -p ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}
+    - /bin/mkdir -p ${APPPATH:-/home/xqtrqexj/medicare-hms-app} ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}
+    - /bin/bash -c 'if [ "$PWD" != "/home/xqtrqexj/medicare-hms-app" ]; then /bin/cp -R app bootstrap config database resources routes scripts artisan composer.json composer.lock package.json /home/xqtrqexj/medicare-hms-app/; fi'
+    - /bin/bash -c 'if [ "$PWD" != "/home/xqtrqexj/medicare-hms-app" ]; then /bin/mkdir -p /home/xqtrqexj/medicare-hms-app/storage/app/public /home/xqtrqexj/medicare-hms-app/storage/framework/cache/data /home/xqtrqexj/medicare-hms-app/storage/framework/sessions /home/xqtrqexj/medicare-hms-app/storage/framework/views /home/xqtrqexj/medicare-hms-app/storage/logs /home/xqtrqexj/medicare-hms-app/bootstrap/cache; fi'
     - /bin/cp public/index.php ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/index.php
     - /bin/cp public/favicon.ico ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/favicon.ico
     - /bin/cp public/robots.txt ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/robots.txt
@@ -11,6 +14,7 @@ deployment:
     - /bin/cp -R public/assets/. ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/assets/
     - /bin/cp -R public/build/. ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/build/
     - /bin/bash -c "if [ ! -f ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/.htaccess ]; then /bin/cp public/.htaccess ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/.htaccess; fi"
-    - /bin/bash -c "if [ ! -e ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage ] && [ -d /home/xqtrqexj/medicare-hms-app/storage/app/public ]; then /bin/ln -s /home/xqtrqexj/medicare-hms-app/storage/app/public ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage; fi"
+    - /bin/bash -c "if [ -L ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage ] && [ ! -d ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage ]; then /bin/rm ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage; fi; if [ ! -e ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage ] && [ ! -L ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage ] && [ -d /home/xqtrqexj/medicare-hms-app/storage/app/public ]; then /bin/ln -s /home/xqtrqexj/medicare-hms-app/storage/app/public ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/storage; fi"
     - /bin/chmod 755 ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/admin-assets ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/assets ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/build
     - /bin/chmod 644 ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/index.php ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/favicon.ico ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/robots.txt
+    - /bin/bash -c "git rev-parse HEAD > /home/xqtrqexj/medicare-hms-app/.deployed_commit 2>/dev/null || true; if [ -f /home/xqtrqexj/medicare-hms-app/.deployed_commit ]; then /bin/cp /home/xqtrqexj/medicare-hms-app/.deployed_commit ${DEPLOYPATH:-/home/xqtrqexj/medicare.kennedycheroben.co.ke}/.deployed_commit 2>/dev/null || true; fi"
